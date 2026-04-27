@@ -1,0 +1,5 @@
+runway.db
+__pycache__/
+*.pyc
+flask_session/
+.env

@@ -1,0 +1,39 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="form-wrap">
+  <h2>New Task</h2>
+  <form method="post" action="/add">
+    <label>Title *
+      <input type="text" name="title" required placeholder="What needs to happen?">
+    </label>
+    <label>Task Type *
+      <select name="task_type" required>
+        <option value="delivery">🚀 Delivery</option>
+        <option value="incident">🔥 Incident</option>
+        <option value="rfc">📄 RFC / Design Review</option>
+        <option value="1on1">👤 1:1 Action Item</option>
+        <option value="hiring">🧑‍💼 Hiring</option>
+        <option value="other">📌 Other</option>
+      </select>
+    </label>
+    <label>Blast Radius <small>(who/what is blocked if this slips?)</small>
+      <input type="text" name="blast_radius" placeholder="e.g. Frontend team, Q3 launch">
+    </label>
+    <label>Sprint / Cycle
+      <input type="text" name="sprint" placeholder="e.g. Sprint 24, Q2-W3">
+    </label>
+    <label>Cognitive Load (1–5) <small>How much headspace does this consume?</small>
+      <input type="range" name="cognitive_load" min="1" max="5" value="2" oninput="this.nextElementSibling.textContent=this.value">
+      <output>2</output>
+    </label>
+    <label>Due Date
+      <input type="date" name="due_date">
+    </label>
+    <label>Notes
+      <textarea name="notes" rows="3" placeholder="Context, links, decisions..."></textarea>
+    </label>
+    <button type="submit">Add to Runway</button>
+    <a href="/" class="btn-cancel">Cancel</a>
+  </form>
+</div>
+{% endblock %}

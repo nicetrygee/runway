@@ -1,0 +1,63 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="dashboard">
+  <div class="stats-bar">
+    <div class="stat"><span>{{ stats.total }}</span> Total</div>
+    <div class="stat in-progress"><span>{{ stats.in_progress }}</span> In Progress</div>
+    <div class="stat blocked"><span>{{ stats.blocked }}</span> Blocked</div>
+    <div class="stat done"><span>{{ stats.done }}</span> Done</div>
+    <div class="stat load"><span>{{ stats.avg_load }}</span> Avg Load</div>
+  </div>
+
+  {% if not tasks %}
+    <p class="empty">Your runway is clear. <a href="/add">Add your first task →</a></p>
+  {% endif %}
+
+  <div class="kanban">
+    {% for col, label, icon in [
+      ('backlog',     'Backlog',     '📋'),
+      ('in_progress', 'In Progress', '⚙️'),
+      ('blocked',     'Blocked',     '🔥'),
+      ('done',        'Done',        '✅')
+    ] %}
+    <div class="kanban-col">
+      <div class="kanban-header status-header-{{ col }}">
+        {{ icon }} {{ label }}
+        <span class="col-count">{{ tasks | selectattr('status', 'equalto', col) | list | length }}</span>
+      </div>
+      <div class="kanban-cards">
+        {% for task in tasks if task.status == col %}
+        <div class="task-card status-{{ task.status }}" data-id="{{ task.id }}">
+          <div class="task-header">
+            <span class="badge type-{{ task.task_type }}">{{ task.task_type }}</span>
+            <span class="load-dot load-{{ task.cognitive_load }}" title="Cognitive load {{ task.cognitive_load }}/5">●</span>
+          </div>
+          <h3>{{ task.title }}</h3>
+          {% if task.blast_radius %}
+            <p class="blast">⚡ {{ task.blast_radius }}</p>
+          {% endif %}
+          <div class="task-meta">
+            {% if task.sprint %}<span>{{ task.sprint }}</span>{% endif %}
+            {% if task.due_date %}<span>📅 {{ task.due_date }}</span>{% endif %}
+          </div>
+          <div class="task-actions">
+            <select class="status-select" data-id="{{ task.id }}">
+              {% for s in ['backlog','in_progress','blocked','done'] %}
+                <option value="{{ s }}" {% if task.status == s %}selected{% endif %}>{{ s.replace('_',' ').title() }}</option>
+              {% endfor %}
+            </select>
+            <a href="/edit/{{ task.id }}" class="btn-sm">Edit</a>
+            <form method="post" action="/delete/{{ task.id }}" style="display:inline">
+              <button class="btn-sm btn-danger" onclick="return confirm('Remove this task?')">✕</button>
+            </form>
+          </div>
+        </div>
+        {% else %}
+        <p class="col-empty">No tasks</p>
+        {% endfor %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

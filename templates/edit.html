@@ -1,0 +1,43 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="form-wrap">
+  <h2>Edit Task</h2>
+  <form method="post" action="/edit/{{ task.id }}">
+    <label>Title *
+      <input type="text" name="title" value="{{ task.title }}" required>
+    </label>
+    <label>Task Type *
+      <select name="task_type" required>
+        {% for t in ['delivery','incident','rfc','1on1','hiring','other'] %}
+          <option value="{{ t }}" {% if task.task_type == t %}selected{% endif %}>{{ t }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Status
+      <select name="status">
+        {% for s in ['backlog','in_progress','blocked','done'] %}
+          <option value="{{ s }}" {% if task.status == s %}selected{% endif %}>{{ s.replace('_',' ').title() }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Blast Radius
+      <input type="text" name="blast_radius" value="{{ task.blast_radius or '' }}">
+    </label>
+    <label>Sprint
+      <input type="text" name="sprint" value="{{ task.sprint or '' }}">
+    </label>
+    <label>Cognitive Load (1–5)
+      <input type="range" name="cognitive_load" min="1" max="5" value="{{ task.cognitive_load }}" oninput="this.nextElementSibling.textContent=this.value">
+      <output>{{ task.cognitive_load }}</output>
+    </label>
+    <label>Due Date
+      <input type="date" name="due_date" value="{{ task.due_date or '' }}">
+    </label>
+    <label>Notes
+      <textarea name="notes" rows="3">{{ task.notes or '' }}</textarea>
+    </label>
+    <button type="submit">Save Changes</button>
+    <a href="/" class="btn-cancel">Cancel</a>
+  </form>
+</div>
+{% endblock %}
