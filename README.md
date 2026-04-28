@@ -4,13 +4,15 @@
 
 ## What is Runway?
 
-First up, I'm an aviation nut, and an Engineering Manager by day. So the name felt an obvious choice. Runway is a Flask-based web app designed to be a task manager for Engineering Managers (EMs). EMs context switch constantly different tasks throughout their day. For example, incident response, architecture reviews, and 1:1s. Each task carries a different urgency and demands a different types of congitive energy.
+First up, I'm an aviation nut, and an Engineering Manager by day. So the name felt an obvious choice. Runway is a Flask-based web app designed to be a task manager for Engineering Managers (EMs). EMs context switch constantly different tasks throughout their day. For example, incident response, architecture reviews, and 1:1s. Each task carries a different urgency and demands a different types of cognitive energy.
 
 Runway allows an EM to register an account, login securely, and manage a personal backlog of tasks. Each task captures title and due date, and then also EM-specific context such what type of work it is, who or what is blocked, and which sprint it belongs to, and its current status, and how much cognitive load it places on the EM. The dashboard displays all tasks sorted by cognitive load (highest first) alongside a summary of totals, blocked count, and average load score which gives the EM a realistic picture of their capacity at a glance.
 
 ## Files
 
-`app.py` is the core of the app. It contains all Flask routes and the app logic. This includes the login, logout, and registration routes which handle password hashing via Werkzeug and server side sessions via Flask-Session. The main index route queries all tasks for the logged-in user, computes the dashboard statistics, and passes them to the template. There are routes for adding and editing tasks, a delete route, and a dedicated `/status/<id>` JSON endpoint that accepts POST requests from the frontend JavaScript to update a task's status without requiring a full page reload.
+`app.py` is the core of the app. It contains all Flask routes and the app logic. This includes the login, logout, and registration routes which handle password hashing via Werkzeug and server side sessions via Flask-Session. The main index route queries all tasks for the logged-in user, computes the dashboard statistics, and passes them to the template. There are routes for adding and editing tasks, a delete route, and a dedicated 
+
+`/status/<id>` JSON endpoint that accepts POST requests from the frontend JavaScript to update a task's status without requiring a full page reload.
 
 `schema.sql` defines the two db tables. The `users` table stores a username and a hashed password. The `tasks` table stores all task fields including the user fk, task type, status, blast radius, sprint, cognitive load score, due date, and notes. Both created and updated timestamps are recorded automatically.
 

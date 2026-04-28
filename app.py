@@ -12,7 +12,7 @@ Session(app)
 
 db = SQL("sqlite:///runway.db")
 
-# ── Auth decorator ──────────────────────────────────────────────────────────
+# Auth decorator
 def login_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
@@ -21,7 +21,7 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated
 
-# ── Index / Dashboard ────────────────────────────────────────────────────────
+# Index / Dashboard
 @app.route("/")
 @login_required
 def index():
@@ -39,7 +39,7 @@ def index():
     }
     return render_template("index.html", tasks=tasks, stats=stats)
 
-# ── Add Task ─────────────────────────────────────────────────────────────────
+# Add Task
 @app.route("/add", methods=["GET", "POST"])
 @login_required
 def add():
@@ -67,7 +67,7 @@ def add():
         return redirect("/")
     return render_template("add.html")
 
-# ── Edit Task ─────────────────────────────────────────────────────────────────
+# Edit Task
 @app.route("/edit/<int:task_id>", methods=["GET", "POST"])
 @login_required
 def edit(task_id):
@@ -94,7 +94,7 @@ def edit(task_id):
         return redirect("/")
     return render_template("edit.html", task=task)
 
-# ── Delete Task ───────────────────────────────────────────────────────────────
+# Delete Task 
 @app.route("/delete/<int:task_id>", methods=["POST"])
 @login_required
 def delete(task_id):
@@ -103,7 +103,7 @@ def delete(task_id):
     flash("Task removed.", "success")
     return redirect("/")
 
-# ── Quick Status Toggle (AJAX) ────────────────────────────────────────────────
+# Status
 @app.route("/status/<int:task_id>", methods=["POST"])
 @login_required
 def update_status(task_id):
@@ -117,7 +117,7 @@ def update_status(task_id):
     )
     return jsonify({"ok": True})
 
-# ── Login / Logout / Register ─────────────────────────────────────────────────
+# Login / Logout / Register 
 @app.route("/login", methods=["GET", "POST"])
 def login():
     session.clear()
