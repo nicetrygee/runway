@@ -1,6 +1,6 @@
 # Runway — Engineering Manager Task Planner
 #### CS50x 2026 Final Project
-#### Video Demo: [URL HERE]
+#### Video Demo: https://youtu.be/eECkP19iwb0
 
 ## What is Runway?
 
