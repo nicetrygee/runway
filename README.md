@@ -4,6 +4,8 @@
 
 A task planner built for Engineering Managers, who don't just juggle deadlines — they juggle incidents, RFCs, 1:1s, hiring, and delivery work in the same afternoon, each demanding a different kind of attention. Runway tracks tasks by **cognitive load** (1–5) and **blast radius** (who's affected if it slips) alongside the usual title/due-date/status, so the dashboard reflects actual capacity, not just a to-do count.
 
+![Runway dashboard](docs/dashboard.png)
+
 ## Quickstart
 
 ```bash
