@@ -36,7 +36,7 @@ Session(app)
 # this ever runs as more than one worker (see #3, multi-instance scaling).
 limiter = Limiter(get_remote_address, app=app)
 
-db = SQL("sqlite:///runway.db")
+db = SQL(os.environ.get("DATABASE_URL", "sqlite:///runway.db"))
 
 # Kept in sync with the CHECK constraints in schema.sql.
 VALID_TASK_TYPES = ["incident", "rfc", "1on1", "hiring", "delivery", "other"]
@@ -195,7 +195,10 @@ def update_status(task_id):
 @app.route("/login", methods=["GET", "POST"])
 @limiter.limit("10 per minute")
 def login():
-    session.clear()
+    # Force logout without session.clear(), which would also wipe any flash
+    # message set by a redirect into this route (e.g. after registration).
+    session.pop("user_id", None)
+    session.pop("username", None)
     if request.method == "POST":
         username = request.form.get("username")
         rows = db.execute("SELECT * FROM users WHERE username = ?", username)

@@ -14,9 +14,18 @@ Set a `SECRET_KEY` via env or `.env` (gitignored) — the app fails fast at star
 
 `--debug` is for local dev only — it enables the Werkzeug debugger, which allows remote code execution if the server is ever reachable from an untrusted network. Never run with `--debug` (or `debug=True`) outside local dev.
 
+## Tests
+
+```bash
+pip install -r requirements-dev.txt
+pytest tests/ -v
+```
+
+Tests don't touch `runway.db` — `tests/conftest.py` points `DATABASE_URL` at a temp SQLite file (bootstrapped from `schema.sql`, reset before every test) and sets `SECRET_KEY` itself, so no `.env` is needed. It also calls `limiter.reset()` before every test since `flask_limiter`'s in-memory storage is a module-level singleton shared across the whole test session — without the reset, one test's requests count against another's rate-limit budget. CI runs the suite on every push/PR to `main` via `.github/workflows/ci.yml`.
+
 ## DB
 
-- SQLite via `cs50.SQL`. The db file is `runway.db` (gitignored).
+- SQLite via `cs50.SQL`. DB path comes from `DATABASE_URL` env var, defaulting to `sqlite:///runway.db` (gitignored) — tests override this to point at a temp file.
 - On first query, `cs50.SQL` auto-creates the file if it doesn't exist, but tables are only created if `schema.sql` has been executed. Run `schema.sql` against the db to bootstrap tables:
   ```bash
   sqlite3 runway.db < schema.sql
@@ -34,8 +43,7 @@ Set a `SECRET_KEY` via env or `.env` (gitignored) — the app fails fast at star
 
 ## Conventions
 
-- No test suite exists.
-- No linter, formatter, or typechecker config. The project has no build pipeline or CI.
+- No linter, formatter, or typechecker config.
 - Flash messages use categories `"success"` and `"error"`.
 - `VALID_TASK_TYPES` and `VALID_STATUSES` in `app.py` are the single source of truth for server-side validation (used by `validate_task_form`, `edit`, and `update_status`) — keep them in sync with the CHECK constraints in `schema.sql` when adding new values.
 - The `/status/<id>` endpoint expects JSON with `Content-Type: application/json` and key `"status"`.
