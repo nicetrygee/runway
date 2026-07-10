@@ -11,7 +11,12 @@ python3 -m venv venv && source venv/bin/activate && pip install -r requirements.
 sqlite3 runway.db < schema.sql
 ```
 
-Set `SECRET_KEY` via env or a `.env` file (e.g. `SECRET_KEY=$(python3 -c "import secrets; print(secrets.token_hex(32))")`) — the app won't start without it.
+Copy `.env.example` to `.env` and set `SECRET_KEY` — the app won't start without it.
+
+```bash
+cp .env.example .env
+python3 -c "import secrets; print(secrets.token_hex(32))"  # paste the output into .env
+```
 
 ```bash
 flask --app app:app run --debug

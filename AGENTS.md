@@ -10,7 +10,7 @@ python3 -m venv venv && source venv/bin/activate && pip install -r requirements.
 flask --app app:app run --debug
 ```
 
-Set a `SECRET_KEY` via env or `.env` (gitignored) — the app fails fast at startup with a `RuntimeError` if it's missing.
+Set a `SECRET_KEY` via env or `.env` (gitignored, see `.env.example`) — the app fails fast at startup with a `RuntimeError` if it's missing.
 
 `--debug` is for local dev only — it enables the Werkzeug debugger, which allows remote code execution if the server is ever reachable from an untrusted network. Never run with `--debug` (or `debug=True`) outside local dev.
 
@@ -60,6 +60,7 @@ Tests don't touch `runway.db` — `tests/conftest.py` points `DATABASE_URL` at a
 ## Conventions
 
 - No linter, formatter, or typechecker config.
+- `requirements.txt` and `requirements-dev.txt` are exact-pinned (`==`). When bumping a dependency, install the new version in `venv`, run the test suite, then update the pin to match — don't hand-edit a version number without testing it.
 - Flash messages use categories `"success"` and `"error"`.
 - `VALID_TASK_TYPES` and `VALID_STATUSES` in `app.py` are the single source of truth for server-side validation (used by `validate_task_form`, `edit`, and `update_status`) — keep them in sync with the CHECK constraints in `schema.sql` when adding new values.
 - The `/status/<id>` endpoint expects JSON with `Content-Type: application/json` and key `"status"`.
