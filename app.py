@@ -3,6 +3,7 @@ from cs50 import SQL
 from dotenv import load_dotenv
 from flask import Flask, flash, redirect, render_template, request, session, jsonify
 from flask_session import Session
+from werkzeug.exceptions import HTTPException
 from werkzeug.security import check_password_hash, generate_password_hash
 from functools import wraps
 from datetime import datetime
@@ -23,6 +24,17 @@ app.config["SESSION_TYPE"] = "filesystem"
 Session(app)
 
 db = SQL("sqlite:///runway.db")
+
+# Catch-all so unexpected errors (e.g. DB failures) never leak a stack
+# trace to the client, even if --debug is left on by accident.
+@app.errorhandler(Exception)
+def handle_exception(e):
+    if isinstance(e, HTTPException):
+        return e
+    app.logger.exception("Unhandled exception on %s %s", request.method, request.path)
+    if request.is_json:
+        return jsonify({"error": "Something went wrong."}), 500
+    return render_template("error.html"), 500
 
 # Auth decorator
 def login_required(f):

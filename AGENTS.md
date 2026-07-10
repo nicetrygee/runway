@@ -7,10 +7,10 @@ python3 -m venv venv && source venv/bin/activate && pip install -r requirements.
 ```
 
 ```bash
-flask run --app app:app --debug
+flask --app app:app run --debug
 ```
 
-Set a `SECRET_KEY` via env or `.env` (gitignored) — Flask-Session filesystem sessions depend on it. Without it, sessions become invalid on every server restart.
+Set a `SECRET_KEY` via env or `.env` (gitignored) — the app fails fast at startup with a `RuntimeError` if it's missing.
 
 `--debug` is for local dev only — it enables the Werkzeug debugger, which allows remote code execution if the server is ever reachable from an untrusted network. Never run with `--debug` (or `debug=True`) outside local dev.
 
@@ -40,3 +40,4 @@ Set a `SECRET_KEY` via env or `.env` (gitignored) — Flask-Session filesystem s
 - `app.py:111-112` validates status strings server-side even though the DB has a CHECK constraint — both must be kept in sync when adding new status values.
 - The `/status/<id>` endpoint expects JSON with `Content-Type: application/json` and key `"status"`.
 - Using `cs50.SQL` means there is no explicit connection management; the wrapper handles it.
+- A global `@app.errorhandler(Exception)` in `app.py` catches unhandled exceptions (e.g. DB errors), logs the full traceback server-side via `app.logger.exception`, and returns a generic response instead of leaking a stack trace — JSON for JSON requests, `templates/error.html` otherwise.
