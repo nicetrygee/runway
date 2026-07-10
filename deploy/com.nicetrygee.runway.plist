@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.nicetrygee.runway</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/gregg.roseker/vscode_repos/runway/venv/bin/gunicorn</string>
+        <string>app:app</string>
+        <string>--bind</string>
+        <string>127.0.0.1:8000</string>
+        <string>--workers</string>
+        <string>2</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/gregg.roseker/vscode_repos/runway</string>
+
+    <key>RunAtLoad</key>
+    <false/>
+
+    <key>KeepAlive</key>
+    <true/>
+
+    <key>StandardOutPath</key>
+    <string>/Users/gregg.roseker/vscode_repos/runway/logs/gunicorn.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/Users/gregg.roseker/vscode_repos/runway/logs/gunicorn-error.log</string>
+</dict>
+</plist>
