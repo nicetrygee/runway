@@ -41,3 +41,4 @@ Set a `SECRET_KEY` via env or `.env` (gitignored) — the app fails fast at star
 - The `/status/<id>` endpoint expects JSON with `Content-Type: application/json` and key `"status"`.
 - Using `cs50.SQL` means there is no explicit connection management; the wrapper handles it.
 - A global `@app.errorhandler(Exception)` in `app.py` catches unhandled exceptions (e.g. DB errors), logs the full traceback server-side via `app.logger.exception`, and returns a generic response instead of leaking a stack trace — JSON for JSON requests, `templates/error.html` otherwise.
+- `/login` (10/min) and `/register` (5/min) are rate-limited per-IP via Flask-Limiter, using the default in-memory storage — fine for a single process, but switch to a Redis backend if this ever runs as more than one worker.

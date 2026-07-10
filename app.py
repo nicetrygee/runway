@@ -2,6 +2,8 @@ import os
 from cs50 import SQL
 from dotenv import load_dotenv
 from flask import Flask, flash, redirect, render_template, request, session, jsonify
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 from flask_session import Session
 from werkzeug.exceptions import HTTPException
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -22,6 +24,10 @@ app.config["SECRET_KEY"] = SECRET_KEY
 app.config["SESSION_PERMANENT"] = False
 app.config["SESSION_TYPE"] = "filesystem"
 Session(app)
+
+# In-memory storage is fine for a single-process app; move to Redis if
+# this ever runs as more than one worker (see #3, multi-instance scaling).
+limiter = Limiter(get_remote_address, app=app)
 
 db = SQL("sqlite:///runway.db")
 
@@ -178,8 +184,9 @@ def update_status(task_id):
     )
     return jsonify({"ok": True})
 
-# Login / Logout / Register 
+# Login / Logout / Register
 @app.route("/login", methods=["GET", "POST"])
+@limiter.limit("10 per minute")
 def login():
     session.clear()
     if request.method == "POST":
@@ -195,6 +202,7 @@ def login():
     return render_template("login.html")
 
 @app.route("/register", methods=["GET", "POST"])
+@limiter.limit("5 per minute")
 def register():
     if request.method == "POST":
         username = request.form.get("username", "").strip()

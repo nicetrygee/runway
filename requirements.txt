@@ -2,3 +2,4 @@ flask
 cs50
 flask-session
 python-dotenv
+flask-limiter
