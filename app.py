@@ -1,11 +1,23 @@
+import os
 from cs50 import SQL
+from dotenv import load_dotenv
 from flask import Flask, flash, redirect, render_template, request, session, jsonify
 from flask_session import Session
 from werkzeug.security import check_password_hash, generate_password_hash
 from functools import wraps
 from datetime import datetime
 
+load_dotenv()
+
+SECRET_KEY = os.environ.get("SECRET_KEY")
+if not SECRET_KEY:
+    raise RuntimeError(
+        "SECRET_KEY is not set. Set it in the environment or in a .env file "
+        "before starting the app."
+    )
+
 app = Flask(__name__)
+app.config["SECRET_KEY"] = SECRET_KEY
 app.config["SESSION_PERMANENT"] = False
 app.config["SESSION_TYPE"] = "filesystem"
 Session(app)
