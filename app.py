@@ -25,6 +25,46 @@ Session(app)
 
 db = SQL("sqlite:///runway.db")
 
+# Kept in sync with the CHECK constraints in schema.sql.
+VALID_TASK_TYPES = ["incident", "rfc", "1on1", "hiring", "delivery", "other"]
+VALID_STATUSES = ["backlog", "in_progress", "blocked", "done"]
+
+def validate_task_form(form, require_status=False):
+    """Validate and coerce task form fields. Returns (data, errors)."""
+    errors = []
+    title = form.get("title", "").strip()
+    task_type = form.get("task_type")
+    blast_radius = form.get("blast_radius", "").strip()
+    sprint = form.get("sprint", "").strip()
+    due_date = form.get("due_date") or None
+    notes = form.get("notes", "").strip()
+
+    if not title:
+        errors.append("Title is required.")
+    if task_type not in VALID_TASK_TYPES:
+        errors.append("Invalid task type.")
+
+    cognitive_load = None
+    try:
+        cognitive_load = int(form.get("cognitive_load", 1))
+        if not 1 <= cognitive_load <= 5:
+            errors.append("Cognitive load must be between 1 and 5.")
+    except (TypeError, ValueError):
+        errors.append("Cognitive load must be a number.")
+
+    status = None
+    if require_status:
+        status = form.get("status")
+        if status not in VALID_STATUSES:
+            errors.append("Invalid status.")
+
+    data = {
+        "title": title, "task_type": task_type, "blast_radius": blast_radius,
+        "sprint": sprint, "cognitive_load": cognitive_load, "due_date": due_date,
+        "notes": notes, "status": status
+    }
+    return data, errors
+
 # Catch-all so unexpected errors (e.g. DB failures) never leak a stack
 # trace to the client, even if --debug is left on by accident.
 @app.errorhandler(Exception)
@@ -68,24 +108,18 @@ def index():
 @login_required
 def add():
     if request.method == "POST":
-        title = request.form.get("title", "").strip()
-        task_type = request.form.get("task_type")
-        blast_radius = request.form.get("blast_radius", "").strip()
-        sprint = request.form.get("sprint", "").strip()
-        cognitive_load = int(request.form.get("cognitive_load", 1))
-        due_date = request.form.get("due_date") or None
-        notes = request.form.get("notes", "").strip()
-
-        if not title or not task_type:
-            flash("Title and task type are required.", "error")
+        data, errors = validate_task_form(request.form)
+        if errors:
+            for error in errors:
+                flash(error, "error")
             return render_template("add.html")
 
         db.execute(
             """INSERT INTO tasks (user_id, title, task_type, blast_radius, sprint,
                cognitive_load, due_date, notes)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-            session["user_id"], title, task_type, blast_radius,
-            sprint, cognitive_load, due_date, notes
+            session["user_id"], data["title"], data["task_type"], data["blast_radius"],
+            data["sprint"], data["cognitive_load"], data["due_date"], data["notes"]
         )
         flash("Task added to Runway.", "success")
         return redirect("/")
@@ -103,15 +137,19 @@ def edit(task_id):
     task = task[0]
 
     if request.method == "POST":
+        data, errors = validate_task_form(request.form, require_status=True)
+        if errors:
+            for error in errors:
+                flash(error, "error")
+            return render_template("edit.html", task=task)
+
         db.execute(
             """UPDATE tasks SET title=?, task_type=?, status=?, blast_radius=?,
                sprint=?, cognitive_load=?, due_date=?, notes=?,
                updated_at=CURRENT_TIMESTAMP
                WHERE id=? AND user_id=?""",
-            request.form.get("title"), request.form.get("task_type"),
-            request.form.get("status"), request.form.get("blast_radius"),
-            request.form.get("sprint"), int(request.form.get("cognitive_load", 1)),
-            request.form.get("due_date") or None, request.form.get("notes"),
+            data["title"], data["task_type"], data["status"], data["blast_radius"],
+            data["sprint"], data["cognitive_load"], data["due_date"], data["notes"],
             task_id, session["user_id"]
         )
         flash("Task updated.", "success")
@@ -132,8 +170,7 @@ def delete(task_id):
 @login_required
 def update_status(task_id):
     new_status = request.json.get("status")
-    valid = ["backlog", "in_progress", "blocked", "done"]
-    if new_status not in valid:
+    if new_status not in VALID_STATUSES:
         return jsonify({"error": "Invalid status"}), 400
     db.execute(
         "UPDATE tasks SET status=?, updated_at=CURRENT_TIMESTAMP WHERE id=? AND user_id=?",

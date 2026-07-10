@@ -37,7 +37,7 @@ Set a `SECRET_KEY` via env or `.env` (gitignored) — the app fails fast at star
 - No test suite exists.
 - No linter, formatter, or typechecker config. The project has no build pipeline or CI.
 - Flash messages use categories `"success"` and `"error"`.
-- `app.py:111-112` validates status strings server-side even though the DB has a CHECK constraint — both must be kept in sync when adding new status values.
+- `VALID_TASK_TYPES` and `VALID_STATUSES` in `app.py` are the single source of truth for server-side validation (used by `validate_task_form`, `edit`, and `update_status`) — keep them in sync with the CHECK constraints in `schema.sql` when adding new values.
 - The `/status/<id>` endpoint expects JSON with `Content-Type: application/json` and key `"status"`.
 - Using `cs50.SQL` means there is no explicit connection management; the wrapper handles it.
 - A global `@app.errorhandler(Exception)` in `app.py` catches unhandled exceptions (e.g. DB errors), logs the full traceback server-side via `app.logger.exception`, and returns a generic response instead of leaking a stack trace — JSON for JSON requests, `templates/error.html` otherwise.
