@@ -1,3 +1,4 @@
+import logging
 import os
 from cs50 import SQL
 from dotenv import load_dotenv
@@ -11,6 +12,12 @@ from functools import wraps
 from datetime import datetime
 
 load_dotenv()
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+    force=True,
+)
 
 SECRET_KEY = os.environ.get("SECRET_KEY")
 if not SECRET_KEY:
@@ -190,14 +197,17 @@ def update_status(task_id):
 def login():
     session.clear()
     if request.method == "POST":
-        rows = db.execute("SELECT * FROM users WHERE username = ?",
-                          request.form.get("username"))
+        username = request.form.get("username")
+        rows = db.execute("SELECT * FROM users WHERE username = ?", username)
         if len(rows) != 1 or not check_password_hash(rows[0]["hash"],
                                                        request.form.get("password")):
+            app.logger.warning("Failed login attempt for username=%r from %s",
+                                username, request.remote_addr)
             flash("Invalid credentials.", "error")
             return render_template("login.html")
         session["user_id"] = rows[0]["id"]
         session["username"] = rows[0]["username"]
+        app.logger.info("User %r logged in from %s", username, request.remote_addr)
         return redirect("/")
     return render_template("login.html")
 
@@ -214,13 +224,16 @@ def register():
             db.execute("INSERT INTO users (username, hash) VALUES (?, ?)",
                        username, generate_password_hash(password))
         except Exception:
+            app.logger.info("Registration failed (username taken): %r", username)
             flash("Username already taken.", "error")
             return render_template("login.html")
+        app.logger.info("New user registered: %r", username)
         flash("Account created — log in.", "success")
         return redirect("/login")
     return render_template("login.html")
 
 @app.route("/logout")
 def logout():
+    app.logger.info("User %r logged out", session.get("username"))
     session.clear()
     return redirect("/login")
