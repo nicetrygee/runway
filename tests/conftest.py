@@ -19,6 +19,10 @@ with open(SCHEMA_PATH) as f:
     SCHEMA_SQL = f.read()
 
 app_module.app.config["TESTING"] = True
+# Tests post form data directly without fetching a CSRF token first; disable
+# CSRF checks here so existing tests don't need to thread one through.
+# test_csrf.py re-enables it for a dedicated check that it's actually wired up.
+app_module.app.config["WTF_CSRF_ENABLED"] = False
 
 
 @pytest.fixture(autouse=True)

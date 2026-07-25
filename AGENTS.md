@@ -47,11 +47,14 @@ Tests don't touch `runway.db` — `tests/conftest.py` points `DATABASE_URL` at a
   sqlite3 runway.db < schema.sql
   ```
 - Query placeholder style is `?` (not `%s` or `:named`). This is the cs50 library convention.
+- `tasks.user_id` has an explicit index (`idx_tasks_user_id`) since every dashboard query filters on it. If you're bootstrapping against an existing `runway.db` created before this was added, re-run `schema.sql` (the `CREATE INDEX IF NOT EXISTS` is safe to apply to an already-populated table).
 
 ## Architecture
 
-- **Single-file Flask app**: `app.py` (~157 lines) contains all routes, auth decorator, and app config.
-- **Auth**: `login_required` decorator guards routes. Sessions use filesystem backend (`flask_session/`, gitignored). Passwords hashed with Werkzeug.
+- **Single-file Flask app**: `app.py` (~170 lines) contains all routes, auth decorator, and app config.
+- **Auth**: `login_required` decorator guards routes. Sessions use filesystem backend (`flask_session/`, gitignored). Passwords hashed with Werkzeug. Registration requires a password of at least 8 characters.
+- **CSRF**: `Flask-WTF`'s `CSRFProtect` is wired up globally in `app.py`. Every POST form includes a hidden `csrf_token` field (see any of `templates/add.html`, `edit.html`, `login.html`, `index.html`'s delete form). The JSON `/status/<id>` endpoint reads the token from the `X-CSRFToken` header instead (set in `static/app.js` from the `<meta name="csrf-token">` tag in `layout.html`). Tests run with `WTF_CSRF_ENABLED = False` (set in `tests/conftest.py`) so they can post form data directly; `tests/test_csrf.py` re-enables it for one test to confirm protection actually rejects an unprotected POST.
+- **Sessions**: filesystem-backed via `flask_session/` (gitignored), configured through a `cachelib.file.FileSystemCache` with `threshold=100` passed as `SESSION_CLIENT` — once the file count passes that, flask-session prunes the oldest on each new write. (Older flask-session versions used a `SESSION_FILE_THRESHOLD` config key directly; that's deprecated as of 0.8.0.)
 - **Templates**: Jinja2, extending `layout.html`. Dark theme, Space Mono + Syne fonts.
 - **Frontend JS**: `static/app.js` — a single AJAX status-update via `fetch()` to `/status/<id>`. No framework.
 - **Task status values**: `backlog`, `in_progress`, `blocked`, `done` (enforced by CHECK constraint in SQLite and validated server-side).

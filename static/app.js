@@ -1,4 +1,6 @@
 // AJAX status toggle — no page reload needed
+const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+
 document.querySelectorAll(".status-select").forEach(select => {
   select.addEventListener("change", async function () {
     const id = this.dataset.id;
@@ -7,7 +9,10 @@ document.querySelectorAll(".status-select").forEach(select => {
 
     const res = await fetch(`/status/${id}`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": csrfToken
+      },
       body: JSON.stringify({ status })
     });
 

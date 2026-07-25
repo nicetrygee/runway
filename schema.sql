@@ -19,3 +19,5 @@ CREATE TABLE IF NOT EXISTS tasks (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY(user_id) REFERENCES users(id)
 );
+
+CREATE INDEX IF NOT EXISTS idx_tasks_user_id ON tasks(user_id);

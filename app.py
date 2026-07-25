@@ -1,11 +1,13 @@
 import logging
 import os
+from cachelib.file import FileSystemCache
 from cs50 import SQL
 from dotenv import load_dotenv
 from flask import Flask, flash, redirect, render_template, request, session, jsonify
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_session import Session
+from flask_wtf import CSRFProtect
 from werkzeug.exceptions import HTTPException
 from werkzeug.security import check_password_hash, generate_password_hash
 from functools import wraps
@@ -30,7 +32,13 @@ app = Flask(__name__)
 app.config["SECRET_KEY"] = SECRET_KEY
 app.config["SESSION_PERMANENT"] = False
 app.config["SESSION_TYPE"] = "filesystem"
+# Filesystem sessions never expire on their own; once the count passes this
+# threshold, flask-session prunes the oldest files on each new session write.
+app.config["SESSION_CLIENT"] = FileSystemCache(
+    os.path.join(os.path.dirname(__file__), "flask_session"), threshold=100
+)
 Session(app)
+csrf = CSRFProtect(app)
 
 # In-memory storage is fine for a single-process app; move to Redis if
 # this ever runs as more than one worker (see #3, multi-instance scaling).
@@ -182,7 +190,7 @@ def delete(task_id):
 @app.route("/status/<int:task_id>", methods=["POST"])
 @login_required
 def update_status(task_id):
-    new_status = request.json.get("status")
+    new_status = (request.get_json(silent=True) or {}).get("status")
     if new_status not in VALID_STATUSES:
         return jsonify({"error": "Invalid status"}), 400
     db.execute(
@@ -222,6 +230,9 @@ def register():
         password = request.form.get("password", "")
         if not username or not password:
             flash("Username and password required.", "error")
+            return render_template("login.html")
+        if len(password) < 8:
+            flash("Password must be at least 8 characters.", "error")
             return render_template("login.html")
         try:
             db.execute("INSERT INTO users (username, hash) VALUES (?, ?)",

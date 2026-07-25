@@ -3,6 +3,7 @@
 <div class="form-wrap">
   <h2>New Task</h2>
   <form method="post" action="/add">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <label>Title *
       <input type="text" name="title" required placeholder="What needs to happen?">
     </label>

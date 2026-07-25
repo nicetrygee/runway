@@ -25,6 +25,12 @@ def test_register_missing_fields(client):
     assert b"required" in resp.data
 
 
+def test_register_password_too_short(client):
+    resp = client.post("/register", data={"username": "alice", "password": "short"})
+    assert resp.status_code == 200
+    assert b"at least 8 characters" in resp.data
+
+
 def test_login_success(client):
     client.post("/register", data={"username": "alice", "password": "password123"})
     resp = client.post(
