@@ -1,5 +1,7 @@
 import logging
 import os
+from typing import Literal
+import anthropic
 from cachelib.file import FileSystemCache
 from cs50 import SQL
 from dotenv import load_dotenv
@@ -8,6 +10,7 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_session import Session
 from flask_wtf import CSRFProtect
+from pydantic import BaseModel
 from werkzeug.exceptions import HTTPException
 from werkzeug.security import check_password_hash, generate_password_hash
 from functools import wraps
@@ -49,6 +52,42 @@ db = SQL(os.environ.get("DATABASE_URL", "sqlite:///runway.db"))
 # Kept in sync with the CHECK constraints in schema.sql.
 VALID_TASK_TYPES = ["incident", "rfc", "1on1", "hiring", "delivery", "other"]
 VALID_STATUSES = ["backlog", "in_progress", "blocked", "done"]
+
+# Quick-add (AI) is optional — the app runs fine without an API key, the
+# feature just flashes an error if used unconfigured.
+ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY")
+ai_client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY) if ANTHROPIC_API_KEY else None
+
+
+class ExtractedTask(BaseModel):
+    title: str
+    # Mirrors VALID_TASK_TYPES — Literal members can't be built from a runtime list.
+    task_type: Literal["incident", "rfc", "1on1", "hiring", "delivery", "other"]
+    blast_radius: str
+    sprint: str
+    cognitive_load: int
+    due_date: str
+    notes: str
+
+
+def extract_task_from_text(text):
+    """Turn a freeform note into structured task fields via Claude."""
+    today = datetime.now().strftime("%Y-%m-%d")
+    response = ai_client.messages.parse(
+        model="claude-opus-4-8",
+        max_tokens=1024,
+        system=(
+            "Extract a task from the user's freeform note for an engineering "
+            f"manager's task tracker. Today's date is {today}. Resolve relative "
+            "dates (e.g. 'Friday', 'next week') to YYYY-MM-DD; leave due_date as "
+            "an empty string if no date is mentioned. cognitive_load is 1-5, how "
+            "much headspace the task consumes — default to 2 if unclear. Leave "
+            "blast_radius, sprint, and notes as empty strings if not mentioned."
+        ),
+        messages=[{"role": "user", "content": text}],
+        output_format=ExtractedTask,
+    )
+    return response.parsed_output
 
 def validate_task_form(form, require_status=False):
     """Validate and coerce task form fields. Returns (data, errors)."""
@@ -145,6 +184,41 @@ def add():
         flash("Task added to Runway.", "success")
         return redirect("/")
     return render_template("add.html")
+
+# Quick Add (AI) — freeform text in, pre-filled Add form out for review
+@app.route("/quick-add", methods=["POST"])
+@login_required
+def quick_add():
+    text = request.form.get("text", "").strip()
+    if not text:
+        flash("Type something to quick-add.", "error")
+        return redirect("/add")
+    if ai_client is None:
+        flash("Quick-add isn't configured — set ANTHROPIC_API_KEY.", "error")
+        return render_template("add.html")
+
+    try:
+        extracted = extract_task_from_text(text)
+    except anthropic.APIStatusError:
+        app.logger.exception("Quick-add extraction failed (API error)")
+        flash("AI extraction failed — fill in the form below.", "error")
+        return render_template("add.html")
+    except Exception:
+        app.logger.exception("Quick-add extraction failed")
+        flash("Couldn't parse that — fill in the form below.", "error")
+        return render_template("add.html")
+
+    prefill = {
+        "title": extracted.title,
+        "task_type": extracted.task_type,
+        "blast_radius": extracted.blast_radius,
+        "sprint": extracted.sprint,
+        "cognitive_load": max(1, min(5, extracted.cognitive_load)),
+        "due_date": extracted.due_date,
+        "notes": extracted.notes,
+    }
+    flash("Review the extracted task, then save.", "success")
+    return render_template("add.html", task=prefill)
 
 # Edit Task
 @app.route("/edit/<int:task_id>", methods=["GET", "POST"])

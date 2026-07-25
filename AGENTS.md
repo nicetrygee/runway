@@ -59,6 +59,7 @@ Tests don't touch `runway.db` — `tests/conftest.py` points `DATABASE_URL` at a
 - **Frontend JS**: `static/app.js` — a single AJAX status-update via `fetch()` to `/status/<id>`. No framework.
 - **Task status values**: `backlog`, `in_progress`, `blocked`, `done` (enforced by CHECK constraint in SQLite and validated server-side).
 - **Task type values**: `incident`, `rfc`, `1on1`, `hiring`, `delivery`, `other`.
+- **Quick Add (AI)**: `POST /quick-add` (`app.py`) sends freeform text to Claude (`claude-opus-4-8` via the `anthropic` SDK's `messages.parse`, structured output into the `ExtractedTask` Pydantic model) and re-renders `templates/add.html` with the extracted fields pre-filled for the user to review before saving — it never inserts a task directly. Optional: requires `ANTHROPIC_API_KEY` in the environment; without it the route flashes an error and falls back to the blank form. `ExtractedTask.task_type` is a hardcoded `Literal` mirroring `VALID_TASK_TYPES` — keep the two in sync. Tests (`tests/test_quick_add.py`) monkeypatch `app.ai_client` and `app.extract_task_from_text` rather than calling the real API.
 
 ## Conventions
 

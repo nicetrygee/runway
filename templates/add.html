@@ -1,37 +1,47 @@
 {% extends "layout.html" %}
 {% block content %}
 <div class="form-wrap">
+  <div class="quick-add-box">
+    <form method="post" action="/quick-add">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <label>✨ Quick add <small>(describe it in plain English — we'll fill out the form below)</small>
+        <textarea name="text" rows="2" placeholder="e.g. Follow up with Sarah on the RFC by Friday, pretty high load"></textarea>
+      </label>
+      <button type="submit" class="btn-secondary-solid">Extract with AI</button>
+    </form>
+  </div>
+
   <h2>New Task</h2>
   <form method="post" action="/add">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <label>Title *
-      <input type="text" name="title" required placeholder="What needs to happen?">
+      <input type="text" name="title" required placeholder="What needs to happen?" value="{{ task.title if task else '' }}">
     </label>
     <label>Task Type *
       <select name="task_type" required>
-        <option value="delivery">🚀 Delivery</option>
-        <option value="incident">🔥 Incident</option>
-        <option value="rfc">📄 RFC / Design Review</option>
-        <option value="1on1">👤 1:1 Action Item</option>
-        <option value="hiring">🧑‍💼 Hiring</option>
-        <option value="other">📌 Other</option>
+        <option value="delivery" {% if task and task.task_type == 'delivery' %}selected{% endif %}>🚀 Delivery</option>
+        <option value="incident" {% if task and task.task_type == 'incident' %}selected{% endif %}>🔥 Incident</option>
+        <option value="rfc" {% if task and task.task_type == 'rfc' %}selected{% endif %}>📄 RFC / Design Review</option>
+        <option value="1on1" {% if task and task.task_type == '1on1' %}selected{% endif %}>👤 1:1 Action Item</option>
+        <option value="hiring" {% if task and task.task_type == 'hiring' %}selected{% endif %}>🧑‍💼 Hiring</option>
+        <option value="other" {% if task and task.task_type == 'other' %}selected{% endif %}>📌 Other</option>
       </select>
     </label>
     <label>Blast Radius <small>(who/what is blocked if this slips?)</small>
-      <input type="text" name="blast_radius" placeholder="e.g. Frontend team, Q3 launch">
+      <input type="text" name="blast_radius" placeholder="e.g. Frontend team, Q3 launch" value="{{ task.blast_radius if task else '' }}">
     </label>
     <label>Sprint / Cycle
-      <input type="text" name="sprint" placeholder="e.g. Sprint 24, Q2-W3">
+      <input type="text" name="sprint" placeholder="e.g. Sprint 24, Q2-W3" value="{{ task.sprint if task else '' }}">
     </label>
     <label>Cognitive Load (1–5) <small>How much headspace does this consume?</small>
-      <input type="range" name="cognitive_load" min="1" max="5" value="2" oninput="this.nextElementSibling.textContent=this.value">
-      <output>2</output>
+      <input type="range" name="cognitive_load" min="1" max="5" value="{{ task.cognitive_load if task else 2 }}" oninput="this.nextElementSibling.textContent=this.value">
+      <output>{{ task.cognitive_load if task else 2 }}</output>
     </label>
     <label>Due Date
-      <input type="date" name="due_date">
+      <input type="date" name="due_date" value="{{ task.due_date if task else '' }}">
     </label>
     <label>Notes
-      <textarea name="notes" rows="3" placeholder="Context, links, decisions..."></textarea>
+      <textarea name="notes" rows="3" placeholder="Context, links, decisions...">{{ task.notes if task else '' }}</textarea>
     </label>
     <button type="submit">Add to Runway</button>
     <a href="/" class="btn-cancel">Cancel</a>
