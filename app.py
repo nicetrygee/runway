@@ -74,7 +74,7 @@ def extract_task_from_text(text):
     """Turn a freeform note into structured task fields via Claude."""
     today = datetime.now().strftime("%Y-%m-%d")
     response = ai_client.messages.parse(
-        model="claude-opus-4-8",
+        model="claude-sonnet-5",
         max_tokens=1024,
         system=(
             "Extract a task from the user's freeform note for an engineering "
