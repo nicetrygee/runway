@@ -1,0 +1,37 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="summary-page">
+  <h1 class="page-title">Weekly Summary</h1>
+  <p class="page-sub">Tasks marked done in the last 7 days.</p>
+
+  {% if ai_summary %}
+    <div class="ai-summary-card">
+      <span class="ai-summary-label">✨ AI Recap</span>
+      <p>{{ ai_summary }}</p>
+    </div>
+  {% endif %}
+
+  {% if not tasks %}
+    <p class="empty">Nothing marked done in the last 7 days.</p>
+  {% else %}
+    <div class="task-grid">
+      {% for task in tasks %}
+      <div class="task-card status-{{ task.status }}">
+        <div class="task-header">
+          <span class="badge type-{{ task.task_type }}">{{ task.task_type }}</span>
+          <span class="load-dot load-{{ task.cognitive_load }}" title="Cognitive load {{ task.cognitive_load }}/5">●</span>
+        </div>
+        <h3>{{ task.title }}</h3>
+        {% if task.blast_radius %}
+          <p class="blast">⚡ {{ task.blast_radius }}</p>
+        {% endif %}
+        <div class="task-meta">
+          {% if task.sprint %}<span>{{ task.sprint }}</span>{% endif %}
+          <span>✅ {{ task.updated_at }}</span>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

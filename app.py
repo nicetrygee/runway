@@ -58,6 +58,10 @@ VALID_STATUSES = ["backlog", "in_progress", "blocked", "done"]
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY")
 ai_client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY) if ANTHROPIC_API_KEY else None
 
+# Weekly summary (AI) is fully wired but off by default — it's a real Claude
+# call, so it stays inert until someone opts in, even with an API key set.
+WEEKLY_SUMMARY_AI_ENABLED = os.environ.get("WEEKLY_SUMMARY_AI_ENABLED") == "1"
+
 
 class ExtractedTask(BaseModel):
     title: str
@@ -68,6 +72,10 @@ class ExtractedTask(BaseModel):
     cognitive_load: int
     due_date: str
     notes: str
+
+
+class WeeklySummary(BaseModel):
+    summary: str
 
 
 def extract_task_from_text(text):
@@ -88,6 +96,28 @@ def extract_task_from_text(text):
         output_format=ExtractedTask,
     )
     return response.parsed_output
+
+
+def generate_weekly_summary(tasks):
+    """Turn a week's worth of completed tasks into a short prose recap via Claude."""
+    task_lines = "\n".join(
+        f"- [{t['task_type']}] {t['title']}"
+        + (f" — {t['blast_radius']}" if t["blast_radius"] else "")
+        for t in tasks
+    )
+    response = ai_client.messages.parse(
+        model="claude-sonnet-5",
+        max_tokens=512,
+        system=(
+            "Write a short, upbeat 2-4 sentence recap of the engineering work "
+            "an engineering manager's team completed this week, suitable to "
+            "skim or forward to their own manager. Group related items where "
+            "it makes sense. Don't invent details beyond what's given."
+        ),
+        messages=[{"role": "user", "content": task_lines}],
+        output_format=WeeklySummary,
+    )
+    return response.parsed_output.summary
 
 def validate_task_form(form, require_status=False):
     """Validate and coerce task form fields. Returns (data, errors)."""
@@ -219,6 +249,36 @@ def quick_add():
     }
     flash("Review the extracted task, then save.", "success")
     return render_template("add.html", task=prefill)
+
+# Weekly Summary (AI) — recap of tasks completed in the last 7 days.
+# The AI recap is opt-in (WEEKLY_SUMMARY_AI_ENABLED); the raw completed-task
+# list always renders underneath regardless.
+@app.route("/summary")
+@login_required
+def summary():
+    uid = session["user_id"]
+    tasks = db.execute(
+        """SELECT * FROM tasks WHERE user_id = ? AND status = 'done'
+           AND updated_at >= datetime('now', '-7 days')
+           ORDER BY updated_at DESC""",
+        uid
+    )
+
+    ai_summary = None
+    if WEEKLY_SUMMARY_AI_ENABLED and tasks:
+        if ai_client is None:
+            flash("Weekly AI summary isn't configured — set ANTHROPIC_API_KEY.", "error")
+        else:
+            try:
+                ai_summary = generate_weekly_summary(tasks)
+            except anthropic.APIStatusError:
+                app.logger.exception("Weekly summary generation failed (API error)")
+                flash("AI summary failed — showing the raw list below.", "error")
+            except Exception:
+                app.logger.exception("Weekly summary generation failed")
+                flash("Couldn't generate a summary — showing the raw list below.", "error")
+
+    return render_template("summary.html", tasks=tasks, ai_summary=ai_summary)
 
 # Edit Task
 @app.route("/edit/<int:task_id>", methods=["GET", "POST"])
