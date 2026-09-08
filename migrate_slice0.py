@@ -89,7 +89,7 @@ def main():
             payload TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY(user_id) REFERENCES users(id),
-            FOREIGN KEY(item_id) REFERENCES tasks(id),
+            FOREIGN KEY(item_id) REFERENCES tasks(id) ON DELETE CASCADE,
             FOREIGN KEY(person_id) REFERENCES people(id)
         );
         CREATE INDEX IF NOT EXISTS idx_events_user_id ON events(user_id);

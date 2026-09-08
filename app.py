@@ -1,20 +1,21 @@
 import logging
 import os
-from typing import Literal
+from functools import wraps
+
 import anthropic
 from cachelib.file import FileSystemCache
-from cs50 import SQL
 from dotenv import load_dotenv
 from flask import Flask, flash, redirect, render_template, request, session, jsonify
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_session import Session
 from flask_wtf import CSRFProtect
-from pydantic import BaseModel
 from werkzeug.exceptions import HTTPException
 from werkzeug.security import check_password_hash, generate_password_hash
-from functools import wraps
-from datetime import datetime
+
+from classify import ai_client, extract_task_from_text, generate_weekly_summary
+from db import db  # re-export: tests import the handle as `from app import db`
+import db as db_module
 
 load_dotenv()
 
@@ -47,77 +48,26 @@ csrf = CSRFProtect(app)
 # this ever runs as more than one worker (see #3, multi-instance scaling).
 limiter = Limiter(get_remote_address, app=app)
 
-db = SQL(os.environ.get("DATABASE_URL", "sqlite:///runway.db"))
-
 # Kept in sync with the CHECK constraints in schema.sql.
 VALID_TASK_TYPES = ["incident", "rfc", "1on1", "hiring", "delivery", "other"]
 VALID_STATUSES = ["backlog", "in_progress", "blocked", "done"]
 
-# Quick-add (AI) is optional — the app runs fine without an API key, the
-# feature just flashes an error if used unconfigured.
-ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY")
-ai_client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY) if ANTHROPIC_API_KEY else None
+# Slice 0 additions — new `tasks` columns' enums. Kept in sync with the
+# CHECK constraints in schema.sql and listed in AGENTS.md, same discipline
+# as VALID_TASK_TYPES/VALID_STATUSES above. Not yet used by any route/UI —
+# Slice A/B/C/D wire these into forms and validation.
+VALID_STREAMS = ["task", "commitment", "delegation", "waiting"]
+VALID_ITEM_TYPES = [
+    "People", "Delivery", "Technical", "Stakeholder", "Strategy",
+    "Hiring", "Operational", "Personal-admin",
+]
+VALID_PRIORITIES = ["Critical", "Important", "Normal", "Delegate", "Ignore"]
+VALID_MODES = ["reactive", "proactive"]
 
 # Weekly summary (AI) is fully wired but off by default — it's a real Claude
 # call, so it stays inert until someone opts in, even with an API key set.
 WEEKLY_SUMMARY_AI_ENABLED = os.environ.get("WEEKLY_SUMMARY_AI_ENABLED") == "1"
 
-
-class ExtractedTask(BaseModel):
-    title: str
-    # Mirrors VALID_TASK_TYPES — Literal members can't be built from a runtime list.
-    task_type: Literal["incident", "rfc", "1on1", "hiring", "delivery", "other"]
-    blast_radius: str
-    sprint: str
-    cognitive_load: int
-    due_date: str
-    notes: str
-
-
-class WeeklySummary(BaseModel):
-    summary: str
-
-
-def extract_task_from_text(text):
-    """Turn a freeform note into structured task fields via Claude."""
-    today = datetime.now().strftime("%Y-%m-%d")
-    response = ai_client.messages.parse(
-        model="claude-sonnet-5",
-        max_tokens=1024,
-        system=(
-            "Extract a task from the user's freeform note for an engineering "
-            f"manager's task tracker. Today's date is {today}. Resolve relative "
-            "dates (e.g. 'Friday', 'next week') to YYYY-MM-DD; leave due_date as "
-            "an empty string if no date is mentioned. cognitive_load is 1-5, how "
-            "much headspace the task consumes — default to 2 if unclear. Leave "
-            "blast_radius, sprint, and notes as empty strings if not mentioned."
-        ),
-        messages=[{"role": "user", "content": text}],
-        output_format=ExtractedTask,
-    )
-    return response.parsed_output
-
-
-def generate_weekly_summary(tasks):
-    """Turn a week's worth of completed tasks into a short prose recap via Claude."""
-    task_lines = "\n".join(
-        f"- [{t['task_type']}] {t['title']}"
-        + (f" — {t['blast_radius']}" if t["blast_radius"] else "")
-        for t in tasks
-    )
-    response = ai_client.messages.parse(
-        model="claude-sonnet-5",
-        max_tokens=512,
-        system=(
-            "Write a short, upbeat 2-4 sentence recap of the engineering work "
-            "an engineering manager's team completed this week, suitable to "
-            "skim or forward to their own manager. Group related items where "
-            "it makes sense. Don't invent details beyond what's given."
-        ),
-        messages=[{"role": "user", "content": task_lines}],
-        output_format=WeeklySummary,
-    )
-    return response.parsed_output.summary
 
 def validate_task_form(form, require_status=False):
     """Validate and coerce task form fields. Returns (data, errors)."""
@@ -180,10 +130,7 @@ def login_required(f):
 @login_required
 def index():
     uid = session["user_id"]
-    tasks = db.execute(
-        "SELECT * FROM tasks WHERE user_id = ? ORDER BY cognitive_load DESC, due_date ASC",
-        uid
-    )
+    tasks = db_module.tasks_for_user(uid)
     stats = {
         "total": len(tasks),
         "in_progress": sum(1 for t in tasks if t["status"] == "in_progress"),
@@ -204,10 +151,7 @@ def add():
                 flash(error, "error")
             return render_template("add.html")
 
-        db.execute(
-            """INSERT INTO tasks (user_id, title, task_type, blast_radius, sprint,
-               cognitive_load, due_date, notes)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+        db_module.insert_task(
             session["user_id"], data["title"], data["task_type"], data["blast_radius"],
             data["sprint"], data["cognitive_load"], data["due_date"], data["notes"]
         )
@@ -257,12 +201,7 @@ def quick_add():
 @login_required
 def summary():
     uid = session["user_id"]
-    tasks = db.execute(
-        """SELECT * FROM tasks WHERE user_id = ? AND status = 'done'
-           AND updated_at >= datetime('now', '-7 days')
-           ORDER BY updated_at DESC""",
-        uid
-    )
+    tasks = db_module.completed_since(uid)
 
     ai_summary = None
     if WEEKLY_SUMMARY_AI_ENABLED and tasks:
@@ -284,8 +223,7 @@ def summary():
 @app.route("/edit/<int:task_id>", methods=["GET", "POST"])
 @login_required
 def edit(task_id):
-    task = db.execute("SELECT * FROM tasks WHERE id = ? AND user_id = ?",
-                      task_id, session["user_id"])
+    task = db_module.get_task(task_id, session["user_id"])
     if not task:
         flash("Task not found.", "error")
         return redirect("/")
@@ -298,25 +236,20 @@ def edit(task_id):
                 flash(error, "error")
             return render_template("edit.html", task=task)
 
-        db.execute(
-            """UPDATE tasks SET title=?, task_type=?, status=?, blast_radius=?,
-               sprint=?, cognitive_load=?, due_date=?, notes=?,
-               updated_at=CURRENT_TIMESTAMP
-               WHERE id=? AND user_id=?""",
-            data["title"], data["task_type"], data["status"], data["blast_radius"],
-            data["sprint"], data["cognitive_load"], data["due_date"], data["notes"],
-            task_id, session["user_id"]
+        db_module.update_task(
+            task_id, session["user_id"], data["title"], data["task_type"], data["status"],
+            data["blast_radius"], data["sprint"], data["cognitive_load"], data["due_date"],
+            data["notes"]
         )
         flash("Task updated.", "success")
         return redirect("/")
     return render_template("edit.html", task=task)
 
-# Delete Task 
+# Delete Task
 @app.route("/delete/<int:task_id>", methods=["POST"])
 @login_required
 def delete(task_id):
-    db.execute("DELETE FROM tasks WHERE id = ? AND user_id = ?",
-               task_id, session["user_id"])
+    db_module.delete_task(task_id, session["user_id"])
     flash("Task removed.", "success")
     return redirect("/")
 
@@ -327,10 +260,7 @@ def update_status(task_id):
     new_status = (request.get_json(silent=True) or {}).get("status")
     if new_status not in VALID_STATUSES:
         return jsonify({"error": "Invalid status"}), 400
-    db.execute(
-        "UPDATE tasks SET status=?, updated_at=CURRENT_TIMESTAMP WHERE id=? AND user_id=?",
-        new_status, task_id, session["user_id"]
-    )
+    db_module.set_status(task_id, session["user_id"], new_status)
     return jsonify({"ok": True})
 
 # Login / Logout / Register
@@ -343,7 +273,7 @@ def login():
     session.pop("username", None)
     if request.method == "POST":
         username = request.form.get("username")
-        rows = db.execute("SELECT * FROM users WHERE username = ?", username)
+        rows = db_module.get_user_by_username(username)
         if len(rows) != 1 or not check_password_hash(rows[0]["hash"],
                                                        request.form.get("password")):
             app.logger.warning("Failed login attempt for username=%r from %s",
@@ -369,8 +299,7 @@ def register():
             flash("Password must be at least 8 characters.", "error")
             return render_template("login.html")
         try:
-            db.execute("INSERT INTO users (username, hash) VALUES (?, ?)",
-                       username, generate_password_hash(password))
+            db_module.create_user(username, generate_password_hash(password))
         except Exception:
             app.logger.info("Registration failed (username taken): %r", username)
             flash("Username already taken.", "error")

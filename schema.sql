@@ -86,7 +86,7 @@ CREATE TABLE IF NOT EXISTS events (
     payload TEXT,                       -- JSON string, event-specific
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY(user_id) REFERENCES users(id),
-    FOREIGN KEY(item_id) REFERENCES tasks(id),
+    FOREIGN KEY(item_id) REFERENCES tasks(id) ON DELETE CASCADE,
     FOREIGN KEY(person_id) REFERENCES people(id)
 );
 

@@ -28,7 +28,10 @@ app_module.app.config["WTF_CSRF_ENABLED"] = False
 @pytest.fixture(autouse=True)
 def reset_db():
     conn = sqlite3.connect(TEST_DB_PATH)
-    conn.executescript("DROP TABLE IF EXISTS tasks; DROP TABLE IF EXISTS users;")
+    conn.executescript(
+        "DROP TABLE IF EXISTS events; DROP TABLE IF EXISTS tasks; "
+        "DROP TABLE IF EXISTS people; DROP TABLE IF EXISTS users;"
+    )
     conn.executescript(SCHEMA_SQL)
     conn.commit()
     conn.close()
