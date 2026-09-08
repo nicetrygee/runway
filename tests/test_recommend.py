@@ -14,6 +14,17 @@ from recommend import Item, recommend
 
 NOW = datetime(2026, 9, 8, 9, 0, 0)   # a fixed "now" so tests are deterministic
 
+# Slice 0: recommend() is intentionally unimplemented (NotImplementedError) —
+# this whole module is Slice B's target. xfail (not skip/exclude) so CI still
+# runs these and stays green, but `strict=True` means the day Slice B
+# implements recommend() and a test starts passing, CI fails loudly here as
+# a reminder to delete this marker.
+pytestmark = pytest.mark.xfail(
+    reason="Slice B: implement recommend() — see recommend.py",
+    raises=NotImplementedError,
+    strict=True,
+)
+
 
 def make(id, title, **kw):
     defaults = dict(stream="task", priority="Normal", status="backlog",
