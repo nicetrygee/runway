@@ -1,5 +1,19 @@
 # AGENTS.md
 
+## North star (do not lose sight of this)
+Runway answers, for one Engineering Manager: "What should I do right now,
+what am I waiting on, what am I neglecting, where am I a bottleneck?"
+It is a personal cognition aid, NOT a team task tracker. When in doubt,
+reduce the EM's mental overhead — derive attention from state + time +
+relationships. Never build toward being a Jira/Linear clone.
+
+## Model
+- One `items` table with a `stream` (task | commitment | delegation | waiting)
+  and an optional `person_id`. Model direction, not four separate lists.
+- `events` is append-only history. Never compute the past by mutating rows.
+- The recommendation engine (`recommend.py`) is a PURE function: no DB, no LLM.
+- New enums live once in code (VALID_*), mirrored in schema.sql CHECKs and here.
+
 ## Setup & run
 
 ```bash
@@ -51,7 +65,13 @@ Tests don't touch `runway.db` — `tests/conftest.py` points `DATABASE_URL` at a
 
 ## Architecture
 
-- **Single-file Flask app**: `app.py` (~170 lines) contains all routes, auth decorator, and app config.
+- **Module split (Slice 0 foundation)**: `app.py` is now thin — Flask wiring, routes, the auth decorator, config, and the error handler. Everything else moved out:
+  - `db.py` — every DB query, one named function per read/write, plus `log_event` (an event append is just another INSERT on the same handle, so a write and its event stay atomic). `app.py` re-exports the handle with `from db import db` so `from app import db` still resolves (existing tests rely on this).
+  - `classify.py` — AI extraction: `ExtractedTask`, `WeeklySummary`, `extract_task_from_text`, `generate_weekly_summary`, the `ai_client` setup.
+  - `events.py` — read-only history helpers (`timeline_for_item`, `events_between`, `event_counts`). Write-side (`log_event`) stays in `db.py` on purpose — keeps the import graph acyclic (`app → db`, `app → classify`, `events → db`; nothing imports `app`).
+  - `recommend.py` — the pure recommendation engine (Slice B; currently a `NotImplementedError` skeleton).
+  - `capacity.py` — weekly review + capacity aggregations (Slice D; placeholder for now).
+- Every `tasks` write (`insert_task`, `update_task`, `set_status` in `db.py`) bumps `last_touched_at` and appends a matching `events` row (`created` / `touched` / `status_changed`, plus `completed` when status becomes `done`).
 - **Auth**: `login_required` decorator guards routes. Sessions use filesystem backend (`flask_session/`, gitignored). Passwords hashed with Werkzeug. Registration requires a password of at least 8 characters.
 - **CSRF**: `Flask-WTF`'s `CSRFProtect` is wired up globally in `app.py`. Every POST form includes a hidden `csrf_token` field (see any of `templates/add.html`, `edit.html`, `login.html`, `index.html`'s delete form). The JSON `/status/<id>` endpoint reads the token from the `X-CSRFToken` header instead (set in `static/app.js` from the `<meta name="csrf-token">` tag in `layout.html`). Tests run with `WTF_CSRF_ENABLED = False` (set in `tests/conftest.py`) so they can post form data directly; `tests/test_csrf.py` re-enables it for one test to confirm protection actually rejects an unprotected POST.
 - **Sessions**: filesystem-backed via `flask_session/` (gitignored), configured through a `cachelib.file.FileSystemCache` with `threshold=100` passed as `SESSION_CLIENT` — once the file count passes that, flask-session prunes the oldest on each new write. (Older flask-session versions used a `SESSION_FILE_THRESHOLD` config key directly; that's deprecated as of 0.8.0.)
@@ -68,6 +88,11 @@ Tests don't touch `runway.db` — `tests/conftest.py` points `DATABASE_URL` at a
 - `requirements.txt` and `requirements-dev.txt` are exact-pinned (`==`). When bumping a dependency, install the new version in `venv`, run the test suite, then update the pin to match — don't hand-edit a version number without testing it.
 - Flash messages use categories `"success"` and `"error"`.
 - `VALID_TASK_TYPES` and `VALID_STATUSES` in `app.py` are the single source of truth for server-side validation (used by `validate_task_form`, `edit`, and `update_status`) — keep them in sync with the CHECK constraints in `schema.sql` when adding new values.
+- Slice 0 added four more `VALID_*` lists in `app.py`, next to the two above, mirroring the new `tasks` columns' CHECK constraints in `schema.sql`. Not wired into any form/validation yet — Slices A–D do that as they build the surfaces that use them:
+  - `VALID_STREAMS` — `task`, `commitment`, `delegation`, `waiting`
+  - `VALID_ITEM_TYPES` — `People`, `Delivery`, `Technical`, `Stakeholder`, `Strategy`, `Hiring`, `Operational`, `Personal-admin`
+  - `VALID_PRIORITIES` — `Critical`, `Important`, `Normal`, `Delegate`, `Ignore`
+  - `VALID_MODES` — `reactive`, `proactive`
 - The `/status/<id>` endpoint expects JSON with `Content-Type: application/json` and key `"status"`.
 - Using `cs50.SQL` means there is no explicit connection management; the wrapper handles it.
 - A global `@app.errorhandler(Exception)` in `app.py` catches unhandled exceptions (e.g. DB errors), logs the full traceback server-side via `app.logger.exception`, and returns a generic response instead of leaking a stack trace — JSON for JSON requests, `templates/error.html` otherwise.
