@@ -44,15 +44,26 @@ def get_task(task_id, user_id):
 
 
 def insert_task(user_id, title, task_type, blast_radius, sprint, cognitive_load,
-                 due_date, notes):
+                 due_date, notes, *, stream="task", item_type=None, priority="Normal",
+                 effort_minutes=None, mode="reactive", person_id=None):
     item_id = db.execute(
         """INSERT INTO tasks (user_id, title, task_type, blast_radius, sprint,
-           cognitive_load, due_date, notes, last_touched_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)""",
-        user_id, title, task_type, blast_radius, sprint, cognitive_load, due_date, notes
+           cognitive_load, due_date, notes, stream, item_type, priority,
+           effort_minutes, mode, person_id, last_touched_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)""",
+        user_id, title, task_type, blast_radius, sprint, cognitive_load, due_date, notes,
+        stream, item_type, priority, effort_minutes, mode, person_id
     )
-    log_event(user_id, item_id, "created")
+    log_event(user_id, item_id, "created", person_id=person_id)
     return item_id
+
+
+def get_or_create_person(user_id, name):
+    name = name.strip()
+    rows = db.execute("SELECT id FROM people WHERE user_id = ? AND name = ?", user_id, name)
+    if rows:
+        return rows[0]["id"]
+    return db.execute("INSERT INTO people (user_id, name) VALUES (?, ?)", user_id, name)
 
 
 def update_task(task_id, user_id, title, task_type, status, blast_radius, sprint,

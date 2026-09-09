@@ -27,6 +27,54 @@
         <option value="other" {% if task and task.task_type == 'other' %}selected{% endif %}>📌 Other</option>
       </select>
     </label>
+    <label>Item Type *
+      <select name="item_type" required>
+        <option value="People" {% if task and task.item_type == 'People' %}selected{% endif %}>People</option>
+        <option value="Delivery" {% if task and task.item_type == 'Delivery' %}selected{% endif %}>Delivery</option>
+        <option value="Technical" {% if task and task.item_type == 'Technical' %}selected{% endif %}>Technical</option>
+        <option value="Stakeholder" {% if task and task.item_type == 'Stakeholder' %}selected{% endif %}>Stakeholder</option>
+        <option value="Strategy" {% if task and task.item_type == 'Strategy' %}selected{% endif %}>Strategy</option>
+        <option value="Hiring" {% if task and task.item_type == 'Hiring' %}selected{% endif %}>Hiring</option>
+        <option value="Operational" {% if task and task.item_type == 'Operational' %}selected{% endif %}>Operational</option>
+        <option value="Personal-admin" {% if task and task.item_type == 'Personal-admin' %}selected{% endif %}>Personal-admin</option>
+      </select>
+    </label>
+    <label>Priority
+      <select name="priority">
+        <option value="Critical" {% if task and task.priority == 'Critical' %}selected{% endif %}>Critical</option>
+        <option value="Important" {% if task and task.priority == 'Important' %}selected{% endif %}>Important</option>
+        <option value="Normal" {% if not task or task.priority == 'Normal' %}selected{% endif %}>Normal</option>
+        <option value="Delegate" {% if task and task.priority == 'Delegate' %}selected{% endif %}>Delegate</option>
+        <option value="Ignore" {% if task and task.priority == 'Ignore' %}selected{% endif %}>Ignore</option>
+      </select>
+    </label>
+    <label>Effort
+      <select name="effort_minutes">
+        <option value="5" {% if task and task.effort_minutes == 5 %}selected{% endif %}>5 minutes</option>
+        <option value="30" {% if task and task.effort_minutes == 30 %}selected{% endif %}>30 minutes</option>
+        <option value="60" {% if task and task.effort_minutes == 60 %}selected{% endif %}>1 hour</option>
+        <option value="120" {% if task and task.effort_minutes == 120 %}selected{% endif %}>2 hours</option>
+        <option value="240" {% if task and task.effort_minutes == 240 %}selected{% endif %}>Half-day</option>
+        <option value="480" {% if task and task.effort_minutes == 480 %}selected{% endif %}>Multi-day</option>
+      </select>
+    </label>
+    <label>Stream <small>(whose court is this in?)</small>
+      <select name="stream">
+        <option value="task" {% if not task or task.stream == 'task' %}selected{% endif %}>My own work</option>
+        <option value="commitment" {% if task and task.stream == 'commitment' %}selected{% endif %}>Commitment (I promised someone)</option>
+        <option value="delegation" {% if task and task.stream == 'delegation' %}selected{% endif %}>Delegation (I handed it off)</option>
+        <option value="waiting" {% if task and task.stream == 'waiting' %}selected{% endif %}>Waiting (blocked on someone)</option>
+      </select>
+    </label>
+    <label>Mode
+      <select name="mode">
+        <option value="reactive" {% if not task or task.mode == 'reactive' %}selected{% endif %}>Reactive</option>
+        <option value="proactive" {% if task and task.mode == 'proactive' %}selected{% endif %}>Proactive</option>
+      </select>
+    </label>
+    <label>Person <small>(optional — who this involves)</small>
+      <input type="text" name="person" placeholder="e.g. Sarah" value="{{ task.person if task else '' }}">
+    </label>
     <label>Blast Radius <small>(who/what is blocked if this slips?)</small>
       <input type="text" name="blast_radius" placeholder="e.g. Frontend team, Q3 launch" value="{{ task.blast_radius if task else '' }}">
     </label>

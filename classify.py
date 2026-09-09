@@ -23,6 +23,19 @@ class ExtractedTask(BaseModel):
     cognitive_load: int
     due_date: str
     notes: str
+    # Slice A additions — mirror VALID_ITEM_TYPES / VALID_PRIORITIES / VALID_STREAMS /
+    # VALID_MODES (app.py). Same Literal-mirrors-a-runtime-list constraint as task_type above.
+    item_type: Literal[
+        "People", "Delivery", "Technical", "Stakeholder", "Strategy",
+        "Hiring", "Operational", "Personal-admin",
+    ]
+    priority: Literal["Critical", "Important", "Normal", "Delegate", "Ignore"]
+    # Canonical minutes directly (5m/30m/1h/2h/half-day/multi-day -> 5/30/60/120/240/480)
+    # so the Literal itself enforces a valid bucket.
+    effort_minutes: Literal[5, 30, 60, 120, 240, 480]
+    person: str  # empty string if no one is named
+    stream: Literal["task", "commitment", "delegation", "waiting"]
+    mode: Literal["reactive", "proactive"]
 
 
 class WeeklySummary(BaseModel):
@@ -41,7 +54,24 @@ def extract_task_from_text(text):
             "dates (e.g. 'Friday', 'next week') to YYYY-MM-DD; leave due_date as "
             "an empty string if no date is mentioned. cognitive_load is 1-5, how "
             "much headspace the task consumes — default to 2 if unclear. Leave "
-            "blast_radius, sprint, and notes as empty strings if not mentioned."
+            "blast_radius, sprint, and notes as empty strings if not mentioned.\n\n"
+            "Also classify it against the EM's broader taxonomy:\n"
+            "- item_type: the single best fit among People, Delivery, Technical, "
+            "Stakeholder, Strategy, Hiring, Operational, Personal-admin.\n"
+            "- priority: Critical, Important, Normal, Delegate, or Ignore — how "
+            "urgently this deserves attention.\n"
+            "- effort_minutes: how long this will take, mapped to exactly one of "
+            "5 (5m), 30 (30m), 60 (1h), 120 (2h), 240 (half-day), 480 (multi-day) "
+            "— pick the closest bucket.\n"
+            "- person: the name of anyone the note is about or addressed to "
+            "(e.g. who asked, who it's owed to, who it's delegated to), or an "
+            "empty string if no one is named.\n"
+            "- stream: 'commitment' if the note is a promise the user made to "
+            "someone else, 'delegation' if the user is handing this off to "
+            "someone else to do, 'waiting' if the user is blocked pending "
+            "someone or something else, otherwise 'task' (the user's own work).\n"
+            "- mode: 'proactive' for strategic, planned, non-urgent work; "
+            "'reactive' for everything else (the common case)."
         ),
         messages=[{"role": "user", "content": text}],
         output_format=ExtractedTask,

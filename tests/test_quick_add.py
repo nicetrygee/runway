@@ -36,6 +36,12 @@ def test_quick_add_success_prefills_form(logged_in_client, monkeypatch):
             cognitive_load=9,  # deliberately out of range, to check clamping
             due_date="2026-08-01",
             notes="",
+            item_type="Technical",
+            priority="Important",
+            effort_minutes=30,
+            stream="task",
+            mode="reactive",
+            person="Sarah",
         )
 
     monkeypatch.setattr(app_module, "extract_task_from_text", fake_extract)
