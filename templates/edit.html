@@ -40,5 +40,28 @@
     <button type="submit">Save Changes</button>
     <a href="/" class="btn-cancel">Cancel</a>
   </form>
-</div>
+
+  <div class="form-wrap">
+    <h2>Relationship</h2>
+    <form method="post" action="/items/{{ task.id }}/relationship">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <label>Stream
+        <select name="stream">
+          {% for s in ['task', 'commitment', 'delegation', 'waiting'] %}
+            <option value="{{ s }}" {% if task.stream == s %}selected{% endif %}>{{ s }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>Person
+        <select name="person_id">
+          <option value="">— none —</option>
+          {% for person in people %}
+            <option value="{{ person.id }}" {% if task.person_id == person.id %}selected{% endif %}>{{ person.name }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <button type="submit">Update Relationship</button>
+    </form>
+    <p class="hint">No person listed? <a href="/people">Add one first →</a></p>
+  </div>
 {% endblock %}

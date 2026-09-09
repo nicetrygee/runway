@@ -152,3 +152,76 @@ def completed_since(user_id):
            ORDER BY updated_at DESC""",
         user_id
     )
+
+
+# --- Slice C: relationship surfaces (commitments / delegated / waiting) ---
+
+def items_by_stream(user_id, stream):
+    """Items in one stream, with the counterparty's name joined in.
+
+    Stalest/most-urgent first: items with a due date sort by that date
+    (earliest first), items without one fall to the back sorted by how
+    long they've gone untouched.
+    """
+    return db.execute(
+        """SELECT tasks.*, people.name AS person_name
+           FROM tasks LEFT JOIN people ON tasks.person_id = people.id
+           WHERE tasks.user_id = ? AND tasks.stream = ?
+           ORDER BY tasks.due_date IS NULL, tasks.due_date ASC, tasks.last_touched_at ASC""",
+        user_id, stream
+    )
+
+
+def people_for_user(user_id):
+    return db.execute(
+        "SELECT * FROM people WHERE user_id = ? ORDER BY name ASC", user_id
+    )
+
+
+def get_person(person_id, user_id):
+    return db.execute(
+        "SELECT * FROM people WHERE id = ? AND user_id = ?", person_id, user_id
+    )
+
+
+def create_person(user_id, name, role, notes):
+    return db.execute(
+        "INSERT INTO people (user_id, name, role, notes) VALUES (?, ?, ?, ?)",
+        user_id, name, role, notes
+    )
+
+
+def open_items_for_person(person_id, user_id):
+    """All non-done items involving this person, across every stream."""
+    return db.execute(
+        """SELECT * FROM tasks WHERE person_id = ? AND user_id = ? AND status != 'done'
+           ORDER BY due_date IS NULL, due_date ASC, last_touched_at ASC""",
+        person_id, user_id
+    )
+
+
+def follow_up(item_id, user_id):
+    """Log that the user chased this item: bumps last_touched_at and
+    appends a followed_up event, same shape as set_status."""
+    db.execute(
+        """UPDATE tasks SET last_touched_at=CURRENT_TIMESTAMP
+           WHERE id=? AND user_id=?""",
+        item_id, user_id
+    )
+    log_event(user_id, item_id, "followed_up")
+
+
+def set_relationship(item_id, user_id, stream, person_id):
+    """Move an existing item onto a different stream and/or counterparty.
+
+    Kept separate from update_task so that function's existing positional
+    signature (and the tests calling it) doesn't have to change.
+    """
+    db.execute(
+        """UPDATE tasks SET stream=?, person_id=?, updated_at=CURRENT_TIMESTAMP,
+           last_touched_at=CURRENT_TIMESTAMP WHERE id=? AND user_id=?""",
+        stream, person_id, item_id, user_id
+    )
+    event_type = "delegated" if stream == "delegation" else "touched"
+    log_event(user_id, item_id, event_type,
+              payload={"stream": stream, "person_id": person_id}, person_id=person_id)
