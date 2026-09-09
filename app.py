@@ -105,6 +105,49 @@ def validate_task_form(form, require_status=False):
     }
     return data, errors
 
+
+def validate_capture_fields(form):
+    """Validate the Slice A EM-taxonomy fields on the capture (/add) form.
+
+    Kept separate from validate_task_form so /edit (which doesn't have these
+    fields) is unaffected.
+    """
+    errors = []
+
+    item_type = form.get("item_type") or None
+    if item_type is not None and item_type not in VALID_ITEM_TYPES:
+        errors.append("Invalid item type.")
+
+    priority = form.get("priority") or "Normal"
+    if priority not in VALID_PRIORITIES:
+        errors.append("Invalid priority.")
+
+    stream = form.get("stream") or "task"
+    if stream not in VALID_STREAMS:
+        errors.append("Invalid stream.")
+
+    mode = form.get("mode") or "reactive"
+    if mode not in VALID_MODES:
+        errors.append("Invalid mode.")
+
+    effort_minutes = None
+    raw_effort = form.get("effort_minutes")
+    if raw_effort:
+        try:
+            effort_minutes = int(raw_effort)
+            if effort_minutes not in (5, 30, 60, 120, 240, 480):
+                errors.append("Invalid effort.")
+        except (TypeError, ValueError):
+            errors.append("Invalid effort.")
+
+    person = form.get("person", "").strip()
+
+    data = {
+        "item_type": item_type, "priority": priority, "stream": stream,
+        "mode": mode, "effort_minutes": effort_minutes, "person": person,
+    }
+    return data, errors
+
 # Catch-all so unexpected errors (e.g. DB failures) never leak a stack
 # trace to the client, even if --debug is left on by accident.
 @app.errorhandler(Exception)
@@ -146,14 +189,23 @@ def index():
 def add():
     if request.method == "POST":
         data, errors = validate_task_form(request.form)
+        capture_data, capture_errors = validate_capture_fields(request.form)
+        errors += capture_errors
         if errors:
             for error in errors:
                 flash(error, "error")
             return render_template("add.html")
 
+        person_id = None
+        if capture_data["person"]:
+            person_id = db_module.get_or_create_person(session["user_id"], capture_data["person"])
+
         db_module.insert_task(
             session["user_id"], data["title"], data["task_type"], data["blast_radius"],
-            data["sprint"], data["cognitive_load"], data["due_date"], data["notes"]
+            data["sprint"], data["cognitive_load"], data["due_date"], data["notes"],
+            stream=capture_data["stream"], item_type=capture_data["item_type"],
+            priority=capture_data["priority"], effort_minutes=capture_data["effort_minutes"],
+            mode=capture_data["mode"], person_id=person_id,
         )
         flash("Task added to Runway.", "success")
         return redirect("/")
@@ -190,6 +242,12 @@ def quick_add():
         "cognitive_load": max(1, min(5, extracted.cognitive_load)),
         "due_date": extracted.due_date,
         "notes": extracted.notes,
+        "item_type": extracted.item_type,
+        "priority": extracted.priority,
+        "effort_minutes": extracted.effort_minutes,
+        "stream": extracted.stream,
+        "mode": extracted.mode,
+        "person": extracted.person,
     }
     flash("Review the extracted task, then save.", "success")
     return render_template("add.html", task=prefill)

@@ -15,6 +15,7 @@
     {% if session.get("user_id") %}
       <span class="nav-user">{{ session.username }}</span>
       <a href="/add" class="btn-nav">+ Task</a>
+      <a href="/add" class="btn-nav btn-ghost">📥 Inbox</a>
       <a href="/summary" class="btn-nav btn-ghost">Weekly Summary</a>
       <a href="/logout" class="btn-nav btn-ghost">Logout</a>
     {% endif %}
