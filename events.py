@@ -33,3 +33,15 @@ def event_counts(user_id, start, end):
            GROUP BY event_type""",
         user_id, start, end
     )
+
+
+def last_followup_for_item(item_id, user_id):
+    """Most recent followed_up event for an item, or None. Distinct from
+    last_touched_at (which any write bumps) — this is specifically "when
+    did I last chase this"."""
+    rows = db.execute(
+        """SELECT * FROM events WHERE item_id = ? AND user_id = ?
+           AND event_type = 'followed_up' ORDER BY created_at DESC LIMIT 1""",
+        item_id, user_id
+    )
+    return rows[0] if rows else None

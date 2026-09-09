@@ -1,0 +1,42 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="summary-page">
+  <h1 class="page-title">Waiting On</h1>
+  <p class="page-sub">Items where the ball is in someone else's court — grouped by who you're waiting on.</p>
+
+  {% if not items %}
+    <p class="empty">Not waiting on anyone right now.</p>
+  {% endif %}
+
+  {% for person_name, person_items in grouped.items() %}
+  <div class="person-group">
+    <div class="person-group-header">{{ person_name }} <span class="col-count">{{ person_items | length }}</span></div>
+    <div class="kanban-cards">
+      {% for item in person_items %}
+      <div class="task-card status-{{ item.status }}">
+        {% if item.escalation %}
+          <div class="escalation-banner">⚠ {{ item.escalation }}</div>
+        {% endif %}
+        <div class="task-header">
+          <span class="badge">{{ item.item_type or 'Waiting' }}</span>
+          <span class="age-tag">{{ item.age_days }}d since touched</span>
+        </div>
+        <h3>{{ item.title }}</h3>
+        <div class="task-meta">
+          {% if item.due_date %}<span>📅 due {{ item.due_date }}</span>{% endif %}
+          <span>{{ item.status.replace('_', ' ').title() }}</span>
+        </div>
+        <div class="task-actions">
+          <a href="/edit/{{ item.id }}" class="btn-sm">Edit</a>
+          <form method="post" action="/follow-up/{{ item.id }}" style="display:inline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn-sm" type="submit">Follow up</button>
+          </form>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,37 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="summary-page">
+  <h1 class="page-title">People</h1>
+  <p class="page-sub">Everyone you're tracking commitments, delegation, or waiting-on items with.</p>
+
+  <div class="form-wrap">
+    <h2>Add Person</h2>
+    <form method="post" action="/people/add">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <label>Name *
+        <input type="text" name="name" required>
+      </label>
+      <label>Role
+        <input type="text" name="role" placeholder="e.g. Product, CTO, Engineer">
+      </label>
+      <label>Notes
+        <textarea name="notes" rows="2"></textarea>
+      </label>
+      <button type="submit">Add Person</button>
+    </form>
+  </div>
+
+  {% if not people %}
+    <p class="empty">No people tracked yet.</p>
+  {% endif %}
+  <div class="people-grid">
+    {% for person in people %}
+    <a href="/people/{{ person.id }}" class="person-card">
+      <h3>{{ person.name }}</h3>
+      {% if person.role %}<p class="task-meta">{{ person.role }}</p>{% endif %}
+      <div class="task-meta"><span>{{ person.open_count }} open item{{ 's' if person.open_count != 1 else '' }}</span></div>
+    </a>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

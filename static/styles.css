@@ -167,3 +167,30 @@ button[type="submit"] { background: var(--accent); color: #000; border: none; pa
 @media (max-width: 500px) {
   .kanban { grid-template-columns: 1fr; }
 }
+
+/* RELATIONSHIP SURFACES (Slice C) */
+.person-group { margin-bottom: 2rem; }
+.person-group-header {
+  font-family: var(--font-head); font-weight: 700; font-size: 0.95rem;
+  text-transform: uppercase; letter-spacing: 0.06em; color: var(--accent);
+  display: flex; align-items: center; gap: 0.6rem;
+  border-bottom: 2px solid var(--border); padding-bottom: 0.5rem; margin-bottom: 0.75rem;
+}
+.person-group .kanban-cards {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  padding: 0; gap: 0.75rem;
+}
+.age-tag { font-size: 0.7rem; color: var(--muted); }
+.escalation-banner {
+  background: #ff406022; border: 1px solid var(--red); color: var(--red);
+  border-radius: 4px; padding: 0.5rem 0.75rem; font-size: 0.8rem; font-weight: 700;
+}
+
+.people-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1rem; }
+.person-card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+  padding: 1.25rem; display: flex; flex-direction: column; gap: 0.4rem;
+  text-decoration: none; color: var(--text); transition: border-color 0.2s;
+}
+.person-card:hover { border-color: var(--accent); }
+.person-card h3 { font-family: var(--font-head); font-size: 1.05rem; }

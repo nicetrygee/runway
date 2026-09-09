@@ -1,6 +1,6 @@
 import logging
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from functools import wraps
 
 import anthropic
@@ -149,6 +149,38 @@ def validate_capture_fields(form):
         "mode": mode, "effort_minutes": effort_minutes, "person": person,
     }
     return data, errors
+
+
+# Slice C: relationship aging/escalation. Pure functions (like
+# validate_task_form above) so they're directly unit-testable without a
+# request context; routes below just annotate query results with them.
+STALE_DAYS_THRESHOLD = 3  # waiting/delegation items untouched this long get nudged even with no due date
+
+
+def item_age_days(item, now=None):
+    """Days since this item's last_touched_at."""
+    now = now or datetime.now(timezone.utc).replace(tzinfo=None)
+    touched = datetime.strptime(item["last_touched_at"], "%Y-%m-%d %H:%M:%S")
+    return (now - touched).days
+
+
+def escalation_for_item(item, now=None):
+    """A follow-up prompt for an overdue/stale waiting or delegation item,
+    or None. Commitments aren't escalated the same way here — the promise
+    is mine to keep, not to chase."""
+    if item["stream"] not in ("waiting", "delegation"):
+        return None
+    now = now or datetime.now(timezone.utc).replace(tzinfo=None)
+    due = item["due_date"]
+    if due:
+        due_date = datetime.strptime(due, "%Y-%m-%d").date()
+        if due_date < now.date():
+            overdue_days = (now.date() - due_date).days
+            return f"was due {due} ({overdue_days}d overdue) — follow up?"
+    age = item_age_days(item, now)
+    if age >= STALE_DAYS_THRESHOLD:
+        return f"no movement in {age} days — follow up?"
+    return None
 
 # Catch-all so unexpected errors (e.g. DB failures) never leak a stack
 # trace to the client, even if --debug is left on by accident.
@@ -309,6 +341,125 @@ def summary():
 
     return render_template("summary.html", tasks=tasks, ai_summary=ai_summary)
 
+# --- Relationship surfaces (Slice C: commitments / delegated / waiting) ---
+
+def _stream_view(stream):
+    """Fetch + annotate one stream's items with age/escalation, and group
+    them by counterparty for the templates."""
+    uid = session["user_id"]
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    items = []
+    for row in db_module.items_by_stream(uid, stream):
+        item = dict(row)
+        item["age_days"] = item_age_days(item, now)
+        item["escalation"] = escalation_for_item(item, now)
+        items.append(item)
+
+    grouped = {}
+    for item in items:
+        grouped.setdefault(item["person_name"] or "Unassigned", []).append(item)
+    return items, grouped
+
+@app.route("/commitments")
+@login_required
+def commitments():
+    items, grouped = _stream_view("commitment")
+    return render_template("commitments.html", items=items, grouped=grouped)
+
+@app.route("/waiting")
+@login_required
+def waiting():
+    items, grouped = _stream_view("waiting")
+    return render_template("waiting.html", items=items, grouped=grouped)
+
+@app.route("/delegated")
+@login_required
+def delegated():
+    items, grouped = _stream_view("delegation")
+    return render_template("delegated.html", items=items, grouped=grouped)
+
+# Follow-up action — logs a followed_up event and bumps last_touched_at.
+@app.route("/follow-up/<int:item_id>", methods=["POST"])
+@login_required
+def follow_up(item_id):
+    uid = session["user_id"]
+    if not db_module.get_task(item_id, uid):
+        flash("Item not found.", "error")
+        return redirect(request.referrer or "/")
+    db_module.follow_up(item_id, uid)
+    flash("Follow-up logged.", "success")
+    return redirect(request.referrer or "/")
+
+# Move an existing item onto a different stream/counterparty. Slice A owns
+# capture/classification; this is the minimal additive control the slice
+# doc allows so items can actually reach the commitment/delegation/waiting
+# surfaces before that slice ships.
+@app.route("/items/<int:item_id>/relationship", methods=["POST"])
+@login_required
+def set_item_relationship(item_id):
+    uid = session["user_id"]
+    if not db_module.get_task(item_id, uid):
+        flash("Item not found.", "error")
+        return redirect(request.referrer or "/")
+
+    stream = request.form.get("stream")
+    if stream not in VALID_STREAMS:
+        flash("Invalid stream.", "error")
+        return redirect(request.referrer or "/")
+
+    person_id = request.form.get("person_id") or None
+    if person_id is not None:
+        try:
+            person_id = int(person_id)
+        except ValueError:
+            flash("Invalid person.", "error")
+            return redirect(request.referrer or "/")
+        if not db_module.get_person(person_id, uid):
+            flash("Invalid person.", "error")
+            return redirect(request.referrer or "/")
+
+    db_module.set_relationship(item_id, uid, stream, person_id)
+    flash("Item updated.", "success")
+    return redirect(request.referrer or "/")
+
+# --- People (Slice C) ---
+
+@app.route("/people")
+@login_required
+def people():
+    uid = session["user_id"]
+    people_list = []
+    for row in db_module.people_for_user(uid):
+        person = dict(row)
+        person["open_count"] = len(db_module.open_items_for_person(person["id"], uid))
+        people_list.append(person)
+    return render_template("people.html", people=people_list)
+
+@app.route("/people/add", methods=["POST"])
+@login_required
+def add_person():
+    uid = session["user_id"]
+    name = request.form.get("name", "").strip()
+    role = request.form.get("role", "").strip()
+    notes = request.form.get("notes", "").strip()
+    if not name:
+        flash("Name is required.", "error")
+        return redirect("/people")
+    db_module.create_person(uid, name, role, notes)
+    flash(f"Added {name}.", "success")
+    return redirect("/people")
+
+@app.route("/people/<int:person_id>")
+@login_required
+def person_detail(person_id):
+    uid = session["user_id"]
+    rows = db_module.get_person(person_id, uid)
+    if not rows:
+        flash("Person not found.", "error")
+        return redirect("/people")
+    items = db_module.open_items_for_person(person_id, uid)
+    return render_template("person_detail.html", person=rows[0], items=items)
+
 # Edit Task
 @app.route("/edit/<int:task_id>", methods=["GET", "POST"])
 @login_required
@@ -324,7 +475,9 @@ def edit(task_id):
         if errors:
             for error in errors:
                 flash(error, "error")
-            return render_template("edit.html", task=task)
+            return render_template(
+                "edit.html", task=task, people=db_module.people_for_user(session["user_id"])
+            )
 
         db_module.update_task(
             task_id, session["user_id"], data["title"], data["task_type"], data["status"],
@@ -333,7 +486,9 @@ def edit(task_id):
         )
         flash("Task updated.", "success")
         return redirect("/")
-    return render_template("edit.html", task=task)
+    return render_template(
+        "edit.html", task=task, people=db_module.people_for_user(session["user_id"])
+    )
 
 # Delete Task
 @app.route("/delete/<int:task_id>", methods=["POST"])
