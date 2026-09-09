@@ -14,6 +14,7 @@
     <a href="/" class="logo">✈ RUNWAY</a>
     {% if session.get("user_id") %}
       <span class="nav-user">{{ session.username }}</span>
+      <a href="/now" class="btn-nav">Now</a>
       <a href="/add" class="btn-nav">+ Task</a>
       <a href="/add" class="btn-nav btn-ghost">📥 Inbox</a>
       <a href="/summary" class="btn-nav btn-ghost">Weekly Summary</a>

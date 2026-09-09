@@ -1,0 +1,64 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="now-page">
+  <h1 class="page-title">What should I do now?</h1>
+  <p class="page-sub">Ranked next actions that fit the time you actually have.</p>
+
+  <form method="get" action="/now" class="now-minutes-form">
+    <label for="minutes">Minutes available right now</label>
+    <input type="number" id="minutes" name="minutes" min="1" value="{{ available_minutes }}">
+    <button type="submit" class="btn-sm">Update</button>
+  </form>
+
+  {% if not fitting and not overflow %}
+    <p class="empty">Nothing in your court right now. <a href="/add">Add a task →</a></p>
+  {% endif %}
+
+  {% if fitting %}
+    <div class="task-grid">
+      {% for rec in fitting %}
+      <div class="task-card status-{{ rec.item.status }}">
+        <div class="task-header">
+          <span class="badge type-{{ rec.item.priority }}">{{ rec.item.priority }}</span>
+          <span class="badge">{{ rec.item.stream }}</span>
+        </div>
+        <h3>{{ rec.item.title }}</h3>
+        <p class="reason">{{ rec.reason }}</p>
+      </div>
+      {% endfor %}
+    </div>
+  {% elif overflow %}
+    <p class="empty">
+      Nothing fits in {{ available_minutes }} min — here's the smallest work available:
+    </p>
+    <div class="task-grid">
+      {% for rec in overflow %}
+      <div class="task-card status-{{ rec.item.status }}">
+        <div class="task-header">
+          <span class="badge type-{{ rec.item.priority }}">{{ rec.item.priority }}</span>
+          <span class="badge">{{ rec.item.stream }}</span>
+        </div>
+        <h3>{{ rec.item.title }}</h3>
+        <p class="reason">{{ rec.reason }}</p>
+      </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  {% if fitting and overflow %}
+    <h2 class="page-title">When you have more time</h2>
+    <div class="task-grid">
+      {% for rec in overflow %}
+      <div class="task-card status-{{ rec.item.status }}">
+        <div class="task-header">
+          <span class="badge type-{{ rec.item.priority }}">{{ rec.item.priority }}</span>
+          <span class="badge">{{ rec.item.stream }}</span>
+        </div>
+        <h3>{{ rec.item.title }}</h3>
+        <p class="reason">{{ rec.reason }}</p>
+      </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+</div>
+{% endblock %}
