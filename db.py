@@ -3,12 +3,16 @@
 Includes log_event: an event append is just another INSERT on the same `db`
 handle, so a task write and its event row stay atomic in the same function
 call. events.py (read-side helpers) imports `db` from here rather than the
-other way around, keeping the import graph acyclic.
+other way around, keeping the import graph acyclic. recommend.py must stay
+DB-free, so the row -> recommend.Item mapping (Slice B) lives here instead.
 """
 import json
 import os
+from datetime import date, datetime
 
 from cs50 import SQL
+
+from recommend import Item
 
 db = SQL(os.environ.get("DATABASE_URL", "sqlite:///runway.db"))
 
@@ -92,6 +96,53 @@ def set_status(task_id, user_id, status):
     log_event(user_id, task_id, "status_changed", payload={"status": status})
     if status == "done":
         log_event(user_id, task_id, "completed")
+
+
+def _parse_date(value):
+    if not value:
+        return None
+    if isinstance(value, date):
+        return value
+    return datetime.strptime(value, "%Y-%m-%d").date()
+
+
+def _parse_datetime(value):
+    if not value:
+        return None
+    if isinstance(value, datetime):
+        return value
+    return datetime.strptime(value, "%Y-%m-%d %H:%M:%S")
+
+
+def candidate_items_for_user(user_id):
+    """Rows in the user's own court: Slice B's recommend() candidate set.
+
+    Mirrors recommend.py's candidate filter at the SQL layer for efficiency;
+    recommend() re-filters defensively so it stays correct standalone.
+    """
+    rows = db.execute(
+        """SELECT * FROM tasks WHERE user_id = ?
+           AND stream IN ('task', 'commitment')
+           AND status != 'done'
+           AND priority != 'Ignore'""",
+        user_id
+    )
+    return [
+        Item(
+            id=row["id"],
+            title=row["title"],
+            stream=row["stream"],
+            priority=row["priority"],
+            status=row["status"],
+            effort_minutes=row["effort_minutes"],
+            due_date=_parse_date(row["due_date"]),
+            is_blocking=row["is_blocking"],
+            mode=row["mode"],
+            item_type=row["item_type"],
+            last_touched_at=_parse_datetime(row["last_touched_at"]),
+        )
+        for row in rows
+    ]
 
 
 def completed_since(user_id):

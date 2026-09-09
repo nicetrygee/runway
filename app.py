@@ -1,5 +1,6 @@
 import logging
 import os
+from datetime import datetime
 from functools import wraps
 
 import anthropic
@@ -13,6 +14,7 @@ from flask_wtf import CSRFProtect
 from werkzeug.exceptions import HTTPException
 from werkzeug.security import check_password_hash, generate_password_hash
 
+import recommend
 from classify import ai_client, extract_task_from_text, generate_weekly_summary
 from db import db  # re-export: tests import the handle as `from app import db`
 import db as db_module
@@ -182,6 +184,36 @@ def index():
         "avg_load": round(sum(t["cognitive_load"] for t in tasks) / len(tasks), 1) if tasks else 0
     }
     return render_template("index.html", tasks=tasks, stats=stats)
+
+# Now — "what should I do right now" ranked recommendations (Slice B)
+@app.route("/now")
+@login_required
+def now():
+    uid = session["user_id"]
+    try:
+        available_minutes = max(1, int(request.args.get("minutes", 60)))
+    except (TypeError, ValueError):
+        available_minutes = 60
+
+    items = db_module.candidate_items_for_user(uid)
+    now_ts = datetime.now()
+    recs = recommend.recommend(items, available_minutes=available_minutes, now=now_ts)
+
+    if not recs:
+        fitting, overflow = [], []
+    elif not recs[0].fits:
+        fitting, overflow = [], recs
+    else:
+        fitting = recs
+        all_recs = recommend.recommend(
+            items, available_minutes=24 * 60, now=now_ts, limit=max(len(items), 1)
+        )
+        fitting_ids = {r.item.id for r in fitting}
+        overflow = [r for r in all_recs if r.item.id not in fitting_ids]
+
+    return render_template(
+        "now.html", fitting=fitting, overflow=overflow, available_minutes=available_minutes
+    )
 
 # Add Task
 @app.route("/add", methods=["GET", "POST"])

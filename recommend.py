@@ -69,31 +69,123 @@ def recommend(
 ) -> list[Recommendation]:
     """Return up to `limit` recommended next actions, best first.
 
-    See the module docstring for the contract. Implement in Slice B.
+    See the module docstring for the contract.
     """
-    raise NotImplementedError("Slice B: implement recommend() to pass tests/test_recommend.py")
+    candidates = [i for i in items if _is_candidate(i)]
+    fitting = [i for i in candidates if _fits(i, available_minutes)]
+
+    if fitting:
+        recs = [
+            Recommendation(
+                item=i,
+                score=_score(i, now, recent_item_type),
+                reason=_reason(i, now, fits=True),
+                fits=True,
+            )
+            for i in fitting
+        ]
+        recs.sort(key=lambda r: r.score, reverse=True)
+        return recs[:limit]
+
+    if not candidates:
+        return []
+
+    # nothing fits: fall back to the smallest items rather than an empty screen
+    smallest = sorted(
+        candidates,
+        key=lambda i: i.effort_minutes if i.effort_minutes is not None else float("inf"),
+    )
+    return [
+        Recommendation(
+            item=i,
+            score=_score(i, now, recent_item_type),
+            reason=_reason(i, now, fits=False),
+            fits=False,
+        )
+        for i in smallest[:limit]
+    ]
 
 
-# --- signal helpers (implement alongside recommend) ------------------------
+def _is_candidate(item: Item) -> bool:
+    return (
+        item.stream in CANDIDATE_STREAMS
+        and item.status != "done"
+        and item.priority != "Ignore"
+    )
+
+
+def _fits(item: Item, available_minutes: int) -> bool:
+    return item.effort_minutes is None or item.effort_minutes <= available_minutes
+
+
+def _score(item: Item, now: datetime, recent_item_type: Optional[str]) -> float:
+    return (
+        W_PRIORITY * priority_weight(item.priority)
+        + W_DUE * urgency(item.due_date, now)
+        + W_BLOCK * blocking(item.is_blocking)
+        + W_NEGLECT * staleness(item.last_touched_at, now)
+        - W_SWITCH * context_switch_penalty(item, recent_item_type)
+    )
+
+
+def _due_phrase(due_date: Optional[date], now: datetime) -> Optional[str]:
+    if due_date is None:
+        return None
+    days = (due_date - now.date()).days
+    if days < 0:
+        return f"overdue by {-days}d"
+    if days == 0:
+        return "due today"
+    if days == 1:
+        return "due tomorrow"
+    return f"due in {days}d"
+
+
+def _reason(item: Item, now: datetime, fits: bool) -> str:
+    parts = [effort_label(item.effort_minutes)]
+    if item.is_blocking:
+        who = "person" if item.is_blocking == 1 else "people"
+        parts.append(f"blocking {item.is_blocking} {who}")
+    due_phrase = _due_phrase(item.due_date, now)
+    if due_phrase:
+        parts.append(due_phrase)
+    if not fits:
+        parts.append("doesn't fit your window")
+    return " · ".join(parts)
+
+
+# --- signal helpers ----------------------------------------------------
 def priority_weight(priority: str) -> float:
-    raise NotImplementedError
+    return PRIORITY_WEIGHT.get(priority, 0.0)
 
 
 def urgency(due_date: Optional[date], now: datetime) -> float:
     """0 when no/na deadline; rises as due nears; max when overdue."""
-    raise NotImplementedError
+    if due_date is None:
+        return 0.0
+    days_until = (due_date - now.date()).days
+    if days_until <= 0:
+        return 1.0
+    return max(0.0, 1.0 - days_until / 7.0)
 
 
 def blocking(is_blocking: int) -> float:
-    raise NotImplementedError
+    if not is_blocking:
+        return 0.0
+    return min(is_blocking / 5.0, 1.0)
 
 
 def staleness(last_touched_at: Optional[datetime], now: datetime) -> float:
-    raise NotImplementedError
+    if last_touched_at is None:
+        return 1.0
+    days_since = (now - last_touched_at).total_seconds() / 86400.0
+    return max(0.0, min(days_since / 14.0, 1.0))
 
 
 def context_switch_penalty(item: Item, recent_item_type: Optional[str]) -> float:
-    raise NotImplementedError
+    if recent_item_type is None or item.item_type is None:
+        return 0.0
+    return 1.0 if item.item_type != recent_item_type else 0.0
 
 
 def effort_label(effort_minutes: Optional[int]) -> str:
