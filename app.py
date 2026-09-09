@@ -204,6 +204,44 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated
 
+# Assembled from Slices A–D's already-built logic: no new backend feature,
+# just wiring the four North Star questions onto the landing page. Additive
+# only — index()'s existing tasks/stats/kanban are untouched below.
+DASHBOARD_NOW_MINUTES = 60  # default assumed availability for the glance widget
+
+
+def _dashboard_context(uid):
+    now_ts = datetime.now(timezone.utc).replace(tzinfo=None)
+
+    candidate_items = db_module.candidate_items_for_user(uid)
+    now_recs = recommend.recommend(
+        candidate_items, available_minutes=DASHBOARD_NOW_MINUTES, now=now_ts, limit=3
+    )
+
+    waiting = [dict(row) for row in db_module.items_by_stream(uid, "waiting")]
+    for item in waiting:
+        item["age_days"] = item_age_days(item, now_ts)
+        item["escalation"] = escalation_for_item(item, now_ts)
+    waiting.sort(key=lambda i: (i["escalation"] is None, -i["age_days"]))
+    waiting = waiting[:5]
+
+    open_items = db_module.open_items(uid)
+    neglected = capacity.neglected_items(open_items, limit=5)
+    bottleneck = capacity.bottleneck_items(open_items, limit=5)
+
+    available_hours = float(db_module.get_setting(
+        uid, "available_hours", capacity.DEFAULT_AVAILABLE_HOURS))
+    capacity_summary = capacity.capacity_read(open_items, available_hours)
+
+    return {
+        "now_recs": now_recs,
+        "waiting": waiting,
+        "neglected": neglected,
+        "bottleneck": bottleneck,
+        "capacity_summary": capacity_summary,
+    }
+
+
 # Index / Dashboard
 @app.route("/")
 @login_required
@@ -217,7 +255,7 @@ def index():
         "done": sum(1 for t in tasks if t["status"] == "done"),
         "avg_load": round(sum(t["cognitive_load"] for t in tasks) / len(tasks), 1) if tasks else 0
     }
-    return render_template("index.html", tasks=tasks, stats=stats)
+    return render_template("index.html", tasks=tasks, stats=stats, **_dashboard_context(uid))
 
 # Now — "what should I do right now" ranked recommendations (Slice B)
 @app.route("/now")
