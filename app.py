@@ -14,10 +14,12 @@ from flask_wtf import CSRFProtect
 from werkzeug.exceptions import HTTPException
 from werkzeug.security import check_password_hash, generate_password_hash
 
+import capacity
 import recommend
 from classify import ai_client, extract_task_from_text, generate_weekly_summary
 from db import db  # re-export: tests import the handle as `from app import db`
 import db as db_module
+from events import events_between
 
 load_dotenv()
 
@@ -459,6 +461,88 @@ def person_detail(person_id):
         return redirect("/people")
     items = db_module.open_items_for_person(person_id, uid)
     return render_template("person_detail.html", person=rows[0], items=items)
+
+# Weekly Review + Capacity (Slice D) — the Friday ritual: counts, a time
+# breakdown, a capacity read, delegation suggestions, and a carry-forward
+# reset. Aggregation logic lives in capacity.py (pure); this route only
+# fetches rows and wires them together.
+@app.route("/review", methods=["GET", "POST"])
+@login_required
+def review():
+    uid = session["user_id"]
+
+    if request.method == "POST":
+        action = request.form.get("action")
+        if action == "carry_forward":
+            item_ids = request.form.getlist("item_id")
+            for item_id in item_ids:
+                db_module.carry_forward_item(int(item_id), uid)
+            flash(f"Carried {len(item_ids)} item(s) into next week." if item_ids
+                  else "No items selected to carry forward.",
+                  "success" if item_ids else "error")
+        elif action == "update_settings":
+            available_hours = request.form.get("available_hours", "").strip()
+            meeting_hours = request.form.get("meeting_hours_this_week", "").strip()
+            try:
+                if available_hours:
+                    db_module.set_setting(uid, "available_hours", str(float(available_hours)))
+                if meeting_hours:
+                    db_module.set_setting(uid, "meeting_hours_this_week", str(float(meeting_hours)))
+                flash("Settings updated.", "success")
+            except ValueError:
+                flash("Available hours and meeting hours must be numbers.", "error")
+        return redirect("/review")
+
+    start, end = capacity.week_bounds(datetime.now())
+    completed_items = db_module.completed_between(uid, start, end)
+    week_events = events_between(uid, start, end)
+    open_items = db_module.open_items(uid)
+    waiting_items = db_module.items_by_stream(uid, "waiting")
+
+    available_hours = float(db_module.get_setting(
+        uid, "available_hours", capacity.DEFAULT_AVAILABLE_HOURS))
+    meeting_hours = float(db_module.get_setting(uid, "meeting_hours_this_week", 0))
+
+    counts = capacity.weekly_counts(week_events, waiting_items)
+    breakdown = capacity.time_breakdown(completed_items)
+    strategic_pct = capacity.strategic_time_pct(breakdown["by_mode"])
+    capacity_summary = capacity.capacity_read(open_items, available_hours)
+    suggestions = capacity.delegation_suggestions(open_items)
+
+    # Items already carried forward this week don't need to be re-prompted —
+    # committed capacity/delegation suggestions still see the full open set.
+    already_carried_ids = {
+        e["item_id"] for e in week_events
+        if e["event_type"] == "touched" and capacity.is_carry_forward_event(e)
+    }
+    carry_forward_candidates = [i for i in open_items if i["id"] not in already_carried_ids]
+
+    ai_narrative = None
+    if WEEKLY_SUMMARY_AI_ENABLED and completed_items:
+        if ai_client is None:
+            flash("Weekly AI summary isn't configured — set ANTHROPIC_API_KEY.", "error")
+        else:
+            try:
+                ai_narrative = generate_weekly_summary(completed_items)
+            except anthropic.APIStatusError:
+                app.logger.exception("Review AI narrative failed (API error)")
+                flash("AI summary failed — showing the numbers below.", "error")
+            except Exception:
+                app.logger.exception("Review AI narrative failed")
+                flash("Couldn't generate a summary — showing the numbers below.", "error")
+
+    return render_template(
+        "review.html",
+        counts=counts,
+        breakdown=breakdown,
+        strategic_pct=strategic_pct,
+        capacity_summary=capacity_summary,
+        suggestions=suggestions,
+        carry_forward_candidates=carry_forward_candidates,
+        available_hours=available_hours,
+        meeting_hours=meeting_hours,
+        ai_narrative=ai_narrative,
+    )
 
 # Edit Task
 @app.route("/edit/<int:task_id>", methods=["GET", "POST"])

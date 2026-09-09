@@ -172,6 +172,26 @@ def items_by_stream(user_id, stream):
     )
 
 
+def completed_between(user_id, start, end):
+    """Tasks marked done within [start, end) — used by the weekly review's
+    calendar-week window (completed_since above is a rolling 7 days,
+    used by /summary)."""
+    return db.execute(
+        """SELECT * FROM tasks WHERE user_id = ? AND status = 'done'
+           AND updated_at >= ? AND updated_at < ?
+           ORDER BY updated_at DESC""",
+        user_id, start, end
+    )
+
+
+def open_items(user_id):
+    """Tasks not yet done — the EM's outstanding load."""
+    return db.execute(
+        "SELECT * FROM tasks WHERE user_id = ? AND status != 'done' ORDER BY due_date ASC",
+        user_id
+    )
+
+
 def people_for_user(user_id):
     return db.execute(
         "SELECT * FROM people WHERE user_id = ? ORDER BY name ASC", user_id
@@ -225,3 +245,33 @@ def set_relationship(item_id, user_id, stream, person_id):
     event_type = "delegated" if stream == "delegation" else "touched"
     log_event(user_id, item_id, event_type,
               payload={"stream": stream, "person_id": person_id}, person_id=person_id)
+
+
+def carry_forward_item(item_id, user_id):
+    """Mark an open item as explicitly carried into next week: a log-only
+    reset (no status/due_date change) via a 'touched' event tagged with a
+    carry_forward payload marker, since 'carry_forward' isn't one of
+    events.event_type's fixed CHECK values."""
+    db.execute(
+        """UPDATE tasks SET last_touched_at = CURRENT_TIMESTAMP
+           WHERE id = ? AND user_id = ?""",
+        item_id, user_id
+    )
+    log_event(user_id, item_id, "touched", payload={"action": "carry_forward"})
+
+
+def get_setting(user_id, key, default=None):
+    rows = db.execute(
+        "SELECT value FROM settings WHERE user_id = ? AND key = ?", user_id, key
+    )
+    return rows[0]["value"] if rows else default
+
+
+def set_setting(user_id, key, value):
+    db.execute(
+        """INSERT INTO settings (user_id, key, value, updated_at)
+           VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+           ON CONFLICT(user_id, key) DO UPDATE SET
+               value = excluded.value, updated_at = excluded.updated_at""",
+        user_id, key, value
+    )
