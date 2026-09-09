@@ -1,5 +1,103 @@
 {% extends "layout.html" %}
 {% block content %}
+<div class="em-dashboard">
+  <section class="dash-section">
+    <div class="dash-section-header">
+      <h2>🎯 What should I do now</h2>
+      <a href="/now" class="btn-sm">See all →</a>
+    </div>
+    {% if not now_recs %}
+      <p class="empty-sm">Nothing in your court right now.</p>
+    {% else %}
+      <div class="task-grid">
+        {% for rec in now_recs %}
+        <div class="task-card status-{{ rec.item.status }}">
+          <div class="task-header">
+            <span class="badge type-{{ rec.item.priority }}">{{ rec.item.priority }}</span>
+            {% if not rec.fits %}<span class="badge">doesn't fit</span>{% endif %}
+          </div>
+          <h3>{{ rec.item.title }}</h3>
+          <p class="reason">{{ rec.reason }}</p>
+        </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  </section>
+
+  <section class="dash-section">
+    <div class="dash-section-header">
+      <h2>⏳ Waiting on</h2>
+      <a href="/waiting" class="btn-sm">See all →</a>
+    </div>
+    {% if not waiting %}
+      <p class="empty-sm">Not waiting on anyone right now.</p>
+    {% else %}
+      <div class="task-grid">
+        {% for item in waiting %}
+        <div class="task-card status-{{ item.status }}">
+          {% if item.escalation %}
+            <div class="escalation-banner">⚠ {{ item.escalation }}</div>
+          {% endif %}
+          <h3>{{ item.title }}</h3>
+          <p class="task-meta">{{ item.person_name or 'Unassigned' }} · {{ item.age_days }}d since touched</p>
+        </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  </section>
+
+  <section class="dash-section">
+    <div class="dash-section-header">
+      <h2>😶 What am I neglecting</h2>
+    </div>
+    {% if not neglected %}
+      <p class="empty-sm">Nothing high-stakes has gone quiet.</p>
+    {% else %}
+      <div class="task-grid">
+        {% for item in neglected %}
+        <div class="task-card status-{{ item.status }}">
+          <span class="badge type-{{ item.priority }}">{{ item.priority }}</span>
+          <h3>{{ item.title }}</h3>
+          <p class="task-meta">{{ item.stream }}{% if item.due_date %} · due {{ item.due_date }}{% endif %}</p>
+        </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  </section>
+
+  <section class="dash-section">
+    <div class="dash-section-header">
+      <h2>🚧 Where am I a bottleneck</h2>
+    </div>
+    {% if not bottleneck %}
+      <p class="empty-sm">Nothing's waiting on you right now.</p>
+    {% else %}
+      <div class="task-grid">
+        {% for item in bottleneck %}
+        <div class="task-card status-{{ item.status }}">
+          <h3>{{ item.title }}</h3>
+          <p class="task-meta">Blocking {{ item.is_blocking }} {{ 'person' if item.is_blocking == 1 else 'people' }}</p>
+        </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  </section>
+
+  <section class="dash-section">
+    <div class="dash-section-header">
+      <h2>📊 Capacity</h2>
+      <a href="/review" class="btn-sm">Full review →</a>
+    </div>
+    <div class="capacity-card">
+      <div class="capacity-bar-track">
+        <div class="capacity-bar-fill{% if capacity_summary.pct_committed > 100 %} over{% endif %}"
+             style="width: {{ [capacity_summary.pct_committed, 100] | min }}%"></div>
+      </div>
+      <p class="capacity-readout">{{ capacity_summary.summary }}</p>
+    </div>
+  </section>
+</div>
+
 <div class="dashboard">
   <div class="stats-bar">
     <div class="stat"><span>{{ stats.total }}</span> Total</div>

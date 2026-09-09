@@ -136,3 +136,31 @@ def delegation_suggestions(open_items: list[dict], effort_threshold: int = DEFAU
         elif priority == "Normal" and effort >= effort_threshold:
             suggestions.append(item)
     return suggestions
+
+
+# Priority tiers worth flagging as "high-stakes" for neglect detection.
+NEGLECT_PRIORITIES = ("Critical", "Important")
+
+
+def neglected_items(open_items: list[dict], limit: int = 5) -> list[dict]:
+    """High-stakes open items that have gone quiet the longest.
+
+    Item-level only (not the person-level "gone quiet on James" signal from
+    the product brief — that needs its own staleness tracking on `people`
+    and isn't wired up yet). Missing last_touched_at sorts as most-stale.
+    """
+    candidates = [i for i in open_items if i.get("priority") in NEGLECT_PRIORITIES]
+    candidates.sort(key=lambda i: i.get("last_touched_at") or "")
+    return candidates[:limit]
+
+
+def bottleneck_items(open_items: list[dict], limit: int = 5) -> list[dict]:
+    """Open items holding up the most other people/things, most first.
+
+    Will typically be empty today — no capture/edit UI sets `is_blocking`
+    yet, but the signal is already in the schema, so this lights up the
+    moment something populates it.
+    """
+    candidates = [i for i in open_items if (i.get("is_blocking") or 0) > 0]
+    candidates.sort(key=lambda i: i.get("is_blocking") or 0, reverse=True)
+    return candidates[:limit]

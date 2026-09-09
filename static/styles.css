@@ -226,3 +226,8 @@ button[type="submit"] { background: var(--accent); color: #000; border: none; pa
 @media (max-width: 600px) {
   .breakdown-grid { grid-template-columns: 1fr; }
 }
+
+/* EM DASHBOARD (assembled from Slices A-D) */
+.em-dashboard { display: flex; flex-direction: column; gap: 1.75rem; margin-bottom: 2.5rem; }
+.dash-section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem; }
+.dash-section-header h2 { font-family: var(--font-head); font-size: 1.05rem; color: var(--text); margin: 0; }
