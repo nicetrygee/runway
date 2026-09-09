@@ -13,6 +13,7 @@ TEST_DB_FD, TEST_DB_PATH = tempfile.mkstemp(suffix=".db")
 os.environ["DATABASE_URL"] = f"sqlite:///{TEST_DB_PATH}"
 
 import app as app_module  # noqa: E402  (must import after env vars are set)
+import migrate_slice_d  # noqa: E402
 
 SCHEMA_PATH = os.path.join(os.path.dirname(__file__), "..", "schema.sql")
 with open(SCHEMA_PATH) as f:
@@ -29,10 +30,13 @@ app_module.app.config["WTF_CSRF_ENABLED"] = False
 def reset_db():
     conn = sqlite3.connect(TEST_DB_PATH)
     conn.executescript(
-        "DROP TABLE IF EXISTS events; DROP TABLE IF EXISTS tasks; "
-        "DROP TABLE IF EXISTS people; DROP TABLE IF EXISTS users;"
+        "DROP TABLE IF EXISTS settings; DROP TABLE IF EXISTS events; "
+        "DROP TABLE IF EXISTS tasks; DROP TABLE IF EXISTS people; "
+        "DROP TABLE IF EXISTS users;"
     )
     conn.executescript(SCHEMA_SQL)
+    # Slice D's settings table — additive, lives outside schema.sql (Slice 0).
+    migrate_slice_d.ensure_settings_table(conn.cursor())
     conn.commit()
     conn.close()
     # Limiter storage is a module-level singleton shared across the whole

@@ -194,3 +194,35 @@ button[type="submit"] { background: var(--accent); color: #000; border: none; pa
 }
 .person-card:hover { border-color: var(--accent); }
 .person-card h3 { font-family: var(--font-head); font-size: 1.05rem; }
+
+/* WEEKLY REVIEW */
+.review-page { max-width: 900px; margin: 0 auto; }
+.review-section { margin-bottom: 2rem; }
+.review-section h2 { font-family: var(--font-head); font-size: 1.2rem; color: var(--text); margin-bottom: 0.75rem; }
+.review-section h3 { font-family: var(--font-head); font-size: 0.9rem; color: var(--muted); margin-bottom: 0.5rem; }
+.empty-sm { color: var(--muted); font-size: 0.85rem; }
+
+.breakdown-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+.breakdown-list { list-style: none; display: flex; flex-direction: column; gap: 0.4rem; }
+.breakdown-list li { display: flex; justify-content: space-between; background: var(--surface); border: 1px solid var(--border); border-radius: 4px; padding: 0.4rem 0.75rem; font-size: 0.85rem; }
+.strategic-pct { margin-top: 0.6rem; font-size: 0.85rem; color: var(--muted); }
+.strategic-pct strong { color: var(--accent); }
+
+.capacity-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 1.25rem; }
+.capacity-bar-track { background: var(--bg); border: 1px solid var(--border); border-radius: 999px; height: 0.6rem; overflow: hidden; margin-bottom: 0.75rem; }
+.capacity-bar-fill { height: 100%; background: var(--accent); }
+.capacity-bar-fill.over { background: var(--red); }
+.capacity-readout { font-weight: 700; }
+.meeting-hours-readout { color: var(--muted); font-size: 0.85rem; margin-bottom: 1rem; }
+.settings-form { display: flex; gap: 1rem; align-items: flex-end; flex-wrap: wrap; }
+.settings-form label { margin-bottom: 0; }
+.settings-form input { width: 8rem; }
+
+.suggestion-list, .carry-forward-list { list-style: none; display: flex; flex-direction: column; gap: 0.5rem; }
+.suggestion-list li, .carry-forward-list li { background: var(--surface); border: 1px solid var(--border); border-radius: 4px; padding: 0.6rem 0.9rem; display: flex; align-items: center; gap: 0.6rem; font-size: 0.85rem; }
+.carry-forward-list label { flex-direction: row; align-items: center; gap: 0.6rem; margin-bottom: 0; font-size: 0.85rem; color: var(--text); }
+.carry-forward-form { display: flex; flex-direction: column; gap: 1rem; }
+
+@media (max-width: 600px) {
+  .breakdown-grid { grid-template-columns: 1fr; }
+}

@@ -1,0 +1,121 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="review-page">
+  <h1 class="page-title">Weekly Review</h1>
+  <p class="page-sub">The Friday ritual — what happened, what it cost, what's next.</p>
+
+  {% if ai_narrative %}
+    <div class="ai-summary-card">
+      <span class="ai-summary-label">✨ AI Recap</span>
+      <p>{{ ai_narrative }}</p>
+    </div>
+  {% endif %}
+
+  <section class="review-section">
+    <h2>This week</h2>
+    <div class="stats-bar">
+      <div class="stat done"><span>{{ counts.completed }}</span> Completed</div>
+      <div class="stat"><span>{{ counts.carried_forward }}</span> Carried Forward</div>
+      <div class="stat"><span>{{ counts.delegated }}</span> Delegated</div>
+      <div class="stat in-progress"><span>{{ counts.waiting }}</span> Waiting On</div>
+    </div>
+  </section>
+
+  <section class="review-section">
+    <h2>Time breakdown</h2>
+    <div class="breakdown-grid">
+      <div class="breakdown-col">
+        <h3>By type</h3>
+        {% if breakdown.by_item_type %}
+          <ul class="breakdown-list">
+            {% for item_type, minutes in breakdown.by_item_type.items() %}
+              <li><span>{{ item_type }}</span><span>{{ (minutes / 60) | round(1) }}h</span></li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p class="empty-sm">Nothing completed this week yet.</p>
+        {% endif %}
+      </div>
+      <div class="breakdown-col">
+        <h3>By mode</h3>
+        {% if breakdown.by_mode %}
+          <ul class="breakdown-list">
+            {% for mode, minutes in breakdown.by_mode.items() %}
+              <li><span>{{ mode }}</span><span>{{ (minutes / 60) | round(1) }}h</span></li>
+            {% endfor %}
+          </ul>
+          <p class="strategic-pct">Strategic time: <strong>{{ strategic_pct }}%</strong> proactive</p>
+        {% else %}
+          <p class="empty-sm">Nothing completed this week yet.</p>
+        {% endif %}
+      </div>
+    </div>
+  </section>
+
+  <section class="review-section">
+    <h2>Capacity</h2>
+    <div class="capacity-card">
+      <div class="capacity-bar-track">
+        <div class="capacity-bar-fill{% if capacity_summary.pct_committed > 100 %} over{% endif %}"
+             style="width: {{ [capacity_summary.pct_committed, 100] | min }}%"></div>
+      </div>
+      <p class="capacity-readout">{{ capacity_summary.summary }}</p>
+      <p class="meeting-hours-readout">Meeting hours this week: {{ meeting_hours }}h</p>
+
+      <form method="post" action="/review" class="settings-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="action" value="update_settings">
+        <label>Available hours
+          <input type="number" step="0.5" min="0" name="available_hours" value="{{ available_hours }}">
+        </label>
+        <label>Meeting hours this week
+          <input type="number" step="0.5" min="0" name="meeting_hours_this_week" value="{{ meeting_hours }}">
+        </label>
+        <button type="submit" class="btn-secondary-solid">Update settings</button>
+      </form>
+    </div>
+  </section>
+
+  <section class="review-section">
+    <h2>Delegation suggestions</h2>
+    {% if suggestions %}
+      <ul class="suggestion-list">
+        {% for item in suggestions %}
+          <li>
+            <span class="badge type-{{ item.task_type }}">{{ item.item_type or item.task_type }}</span>
+            {{ item.title }}
+            <span class="task-meta">{{ item.priority }} · {{ (item.effort_minutes or 0) }}m</span>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="empty-sm">Nothing stands out to delegate right now.</p>
+    {% endif %}
+  </section>
+
+  <section class="review-section">
+    <h2>Carry into next week?</h2>
+    <p class="page-sub">A deliberate reset — pick what's still worth doing.</p>
+    {% if carry_forward_candidates %}
+      <form method="post" action="/review" class="carry-forward-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="action" value="carry_forward">
+        <ul class="carry-forward-list">
+          {% for item in carry_forward_candidates %}
+            <li>
+              <label>
+                <input type="checkbox" name="item_id" value="{{ item.id }}">
+                {{ item.title }}
+                <span class="task-meta">{{ item.status.replace('_',' ') }}{% if item.due_date %} · due {{ item.due_date }}{% endif %}</span>
+              </label>
+            </li>
+          {% endfor %}
+        </ul>
+        <button type="submit" class="btn-secondary-solid">Carry forward selected</button>
+      </form>
+    {% else %}
+      <p class="empty-sm">Nothing open — a clean slate.</p>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}
