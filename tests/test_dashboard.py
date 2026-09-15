@@ -8,7 +8,6 @@ stream/priority/is_blocking yet.
 import capacity
 import db as db_module
 
-
 # --- capacity.py: neglected_items / bottleneck_items -----------------------
 
 def test_neglected_items_filters_to_high_stakes_priority():
@@ -78,7 +77,10 @@ def test_dashboard_empty_state_for_all_widgets(logged_in_client):
     assert b"Nothing in your court right now." in resp.data
     assert b"Not waiting on anyone right now." in resp.data
     assert b"Nothing high-stakes has gone quiet." in resp.data
-    assert b"Nothing&#39;s waiting on you right now." in resp.data or b"Nothing's waiting on you right now." in resp.data
+    assert (
+        b"Nothing&#39;s waiting on you right now." in resp.data
+        or b"Nothing's waiting on you right now." in resp.data
+    )
 
 
 def test_dashboard_now_widget_shows_task_stream_item(logged_in_client):

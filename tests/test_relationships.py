@@ -125,7 +125,10 @@ def test_escalation_for_stale_untouched_waiting_item():
 
 def test_escalation_for_overdue_delegation_item_takes_precedence_over_staleness():
     now = datetime(2026, 9, 9, 12, 0, 0)
-    item = {"stream": "delegation", "due_date": "2026-09-07", "last_touched_at": "2026-09-08 12:00:00"}
+    item = {
+        "stream": "delegation", "due_date": "2026-09-07",
+        "last_touched_at": "2026-09-08 12:00:00",
+    }
     msg = escalation_for_item(item, now)
     assert msg is not None
     assert "was due 2026-09-07" in msg
@@ -133,7 +136,10 @@ def test_escalation_for_overdue_delegation_item_takes_precedence_over_staleness(
 
 def test_escalation_none_for_commitment_even_if_overdue():
     now = datetime(2026, 9, 9, 12, 0, 0)
-    item = {"stream": "commitment", "due_date": "2026-09-01", "last_touched_at": "2026-09-01 12:00:00"}
+    item = {
+        "stream": "commitment", "due_date": "2026-09-01",
+        "last_touched_at": "2026-09-01 12:00:00",
+    }
     assert escalation_for_item(item, now) is None
 
 
@@ -155,7 +161,7 @@ def test_relationship_views_require_login(client, path):
 def test_commitments_view_shows_only_commitment_stream_grouped_by_person(logged_in_client):
     uid = _user_id()
     james_id = db_module.create_person(uid, "James", "Eng", "")
-    plain = _add_item(logged_in_client, title="Plain Task")
+    _add_item(logged_in_client, title="Plain Task")
     commitment = _add_item(logged_in_client, title="Send proposal")
     db_module.set_relationship(commitment, uid, "commitment", james_id)
 
@@ -179,7 +185,7 @@ def test_waiting_view_shows_escalation_for_overdue_item(logged_in_client):
 
 def test_delegated_view_only_shows_delegation_stream(logged_in_client):
     uid = _user_id()
-    other = _add_item(logged_in_client, title="Not delegated")
+    _add_item(logged_in_client, title="Not delegated")
     item = _add_item(logged_in_client, title="Hiring analysis")
     db_module.set_relationship(item, uid, "delegation", None)
 

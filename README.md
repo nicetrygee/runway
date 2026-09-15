@@ -27,16 +27,27 @@ python3 -c "import secrets; print(secrets.token_hex(32))"  # paste the output in
 flask --app app:app run --debug
 ```
 
-`ANTHROPIC_API_KEY` is optional — it enables AI-powered quick-add (freeform text → classified item) and the weekly AI recap. The app runs fully without it; those features fall back to manual entry / the raw numbers. See `.env.example` for details.
+`ANTHROPIC_API_KEY` is optional — it enables AI-powered quick-add (freeform text → classified item) and the weekly AI recap. The app runs fully without it; those features fall back to manual entry / the raw numbers. See `.env.example` for details. When either AI feature is used, the task text you type is sent to Anthropic's API to be classified/summarized.
+
+### Docker
+
+```bash
+docker build -t runway .
+docker run -e SECRET_KEY=$(python3 -c "import secrets; print(secrets.token_hex(32))") -p 8000:8000 runway
+```
+
+Bootstraps a fresh `runway.db` inside the container on first run. It's a single-user local tool at heart, so the database isn't persisted across rebuilds unless you mount a volume over `/app/runway.db` — this image is meant for a quick local look, not a deployment target.
 
 ## Tests
 
 ```bash
 pip install -r requirements-dev.txt
+ruff check .      # lint
+mypy .            # type check
 pytest tests/ -v
 ```
 
-152 tests covering auth, CSRF, rate limiting, the global error handler, item capture/classification, the recommendation engine, relationship surfaces (commitments/waiting/delegated/people), weekly review + capacity, the assembled dashboard, and the schema migrations. CI runs the suite on every push/PR to `main`.
+152 tests covering auth, CSRF, rate limiting, the global error handler, item capture/classification, the recommendation engine, relationship surfaces (commitments/waiting/delegated/people), weekly review + capacity, the assembled dashboard, and the schema migrations. CI runs lint, type checks, and the suite on every push/PR to `main`; Dependabot keeps dependencies patched weekly.
 
 ## What it does
 
@@ -86,6 +97,7 @@ Deeper technical notes and the full build history live in `AGENTS.md`, `docs/pro
 | `static/` | Dark-themed CSS and a small `fetch()`-based status-update script |
 | `tests/` | pytest suite (mirrors the module split) |
 | `deploy/` | launchd config for running in the background |
+| `Dockerfile`, `docker-entrypoint.sh` | Minimal container image for local/demo use |
 
 ## Design choices
 

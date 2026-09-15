@@ -29,8 +29,10 @@ CREATE TABLE IF NOT EXISTS tasks (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
     title TEXT NOT NULL,
-    task_type TEXT NOT NULL CHECK(task_type IN ('incident','rfc','1on1','hiring','delivery','other')),
-    status TEXT NOT NULL DEFAULT 'backlog' CHECK(status IN ('backlog','in_progress','blocked','done')),
+    task_type TEXT NOT NULL
+        CHECK(task_type IN ('incident','rfc','1on1','hiring','delivery','other')),
+    status TEXT NOT NULL DEFAULT 'backlog'
+        CHECK(status IN ('backlog','in_progress','blocked','done')),
     blast_radius TEXT,
     sprint TEXT,
     cognitive_load INTEGER DEFAULT 1 CHECK(cognitive_load BETWEEN 1 AND 5),
