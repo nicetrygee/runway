@@ -1,6 +1,9 @@
 [tool.ruff]
 line-length = 100
 target-version = "py312"
+# flask_session/ is Flask-Session's gitignored, runtime-created session-storage
+# directory, not a package — skip it so it's never linted as source.
+extend-exclude = ["flask_session"]
 
 [tool.ruff.lint]
 # Curated, low-noise set for a codebase with no prior lint history: real bugs
@@ -8,6 +11,14 @@ target-version = "py312"
 # import ordering (I). Deliberately skips opinionated/stylistic rule sets
 # (e.g. DTZ, UP) that would require broad, unrelated rewrites to adopt.
 select = ["E", "F", "W", "I", "B"]
+
+[tool.ruff.lint.isort]
+# Pin explicitly: isort's first/third-party heuristic checks for a same-named
+# directory under the project root, and the flask_session/ runtime directory
+# above (present on disk after actually running the app, absent in CI) would
+# otherwise make the *import sort order it demands* depend on whether the app
+# happens to have been run locally.
+known-third-party = ["flask_session"]
 
 [tool.mypy]
 ignore_missing_imports = true
