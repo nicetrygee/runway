@@ -1,0 +1,10 @@
+venv/
+__pycache__/
+*.pyc
+flask_session/
+.env
+logs/
+.git/
+.github/
+tests/
+runway.db

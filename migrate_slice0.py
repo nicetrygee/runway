@@ -107,15 +107,20 @@ def main():
             added.append(name)
 
     # Backfills (only touch rows that still have the old/empty value)
-    cur.execute("UPDATE tasks SET last_touched_at = COALESCE(updated_at, created_at, CURRENT_TIMESTAMP) "
-                "WHERE last_touched_at IS NULL")
+    cur.execute(
+        "UPDATE tasks SET last_touched_at = COALESCE(updated_at, created_at, CURRENT_TIMESTAMP) "
+        "WHERE last_touched_at IS NULL"
+    )
     cur.execute("UPDATE tasks SET item_type = NULL WHERE item_type = ''")
     for legacy, new in TYPE_MAP.items():
         cur.execute("UPDATE tasks SET item_type = ? WHERE item_type IS NULL AND task_type = ?",
                     (new, legacy))
     for load, mins in LOAD_TO_EFFORT.items():
-        cur.execute("UPDATE tasks SET effort_minutes = ? WHERE effort_minutes IS NULL AND cognitive_load = ?",
-                    (mins, load))
+        cur.execute(
+            "UPDATE tasks SET effort_minutes = ? "
+            "WHERE effort_minutes IS NULL AND cognitive_load = ?",
+            (mins, load)
+        )
 
     cur.executescript(
         """

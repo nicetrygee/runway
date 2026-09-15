@@ -6,7 +6,7 @@ stay stable while the scoring is tuned.
 
 Run: pytest tests/test_recommend.py
 """
-from datetime import date, datetime, timedelta
+from datetime import datetime, timedelta
 
 from recommend import Item, recommend
 

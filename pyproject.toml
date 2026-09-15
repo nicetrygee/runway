@@ -1,0 +1,18 @@
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+# Curated, low-noise set for a codebase with no prior lint history: real bugs
+# (F = pyflakes, B = bugbear), real style breakage (E, W = pycodestyle), and
+# import ordering (I). Deliberately skips opinionated/stylistic rule sets
+# (e.g. DTZ, UP) that would require broad, unrelated rewrites to adopt.
+select = ["E", "F", "W", "I", "B"]
+
+[tool.mypy]
+ignore_missing_imports = true
+# Without this, mypy treats the local flask_session/ directory (Flask-Session's
+# gitignored file-based session storage, created at runtime) as a namespace
+# package that shadows the real pip-installed flask_session library.
+namespace_packages = false
+exclude = ["^venv/", "^flask_session/"]

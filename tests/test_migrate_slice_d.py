@@ -98,7 +98,9 @@ def test_settings_unique_constraint_per_user_and_key(tmp_path):
     con.execute("INSERT INTO settings (user_id, key, value) VALUES (1, 'available_hours', '38')")
     con.commit()
     try:
-        con.execute("INSERT INTO settings (user_id, key, value) VALUES (1, 'available_hours', '40')")
+        con.execute(
+            "INSERT INTO settings (user_id, key, value) VALUES (1, 'available_hours', '40')"
+        )
         con.commit()
         raised = False
     except sqlite3.IntegrityError:

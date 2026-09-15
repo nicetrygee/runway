@@ -100,7 +100,10 @@ def test_carry_forward_action_writes_touched_event_with_payload(logged_in_client
     events = app_module.db.execute(
         "SELECT * FROM events WHERE item_id = ? AND event_type = 'touched'", item_id
     )
-    carry_events = [e for e in events if json.loads(e["payload"] or "{}").get("action") == "carry_forward"]
+    carry_events = [
+        e for e in events
+        if json.loads(e["payload"] or "{}").get("action") == "carry_forward"
+    ]
     assert len(carry_events) == 1
 
 
@@ -132,7 +135,10 @@ def test_settings_round_trip(logged_in_client):
 def test_settings_update_rejects_non_numeric_input(logged_in_client):
     resp = logged_in_client.post(
         "/review",
-        data={"action": "update_settings", "available_hours": "not-a-number", "meeting_hours_this_week": ""},
+        data={
+            "action": "update_settings", "available_hours": "not-a-number",
+            "meeting_hours_this_week": "",
+        },
         follow_redirects=True,
     )
     assert resp.status_code == 200

@@ -119,11 +119,16 @@ def capacity_read(open_items: list[dict], available_hours: float) -> dict:
         "committed_hours": committed_hours,
         "available_hours": available_hours,
         "pct_committed": pct_committed,
-        "summary": f"{pct_committed}% committed — {committed_hours}h committed / {available_hours}h available",
+        "summary": (
+            f"{pct_committed}% committed — "
+            f"{committed_hours}h committed / {available_hours}h available"
+        ),
     }
 
 
-def delegation_suggestions(open_items: list[dict], effort_threshold: int = DEFAULT_EFFORT_THRESHOLD) -> list[dict]:
+def delegation_suggestions(
+    open_items: list[dict], effort_threshold: int = DEFAULT_EFFORT_THRESHOLD
+) -> list[dict]:
     """Items worth delegating: explicitly flagged Delegate, or high-effort
     Normal-priority items that don't need the EM's own hands.
     """

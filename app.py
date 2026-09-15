@@ -6,20 +6,20 @@ from functools import wraps
 import anthropic
 from cachelib.file import FileSystemCache
 from dotenv import load_dotenv
-from flask import Flask, flash, redirect, render_template, request, session, jsonify
+from flask import Flask, flash, jsonify, redirect, render_template, request, session
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
-from flask_session import Session
 from flask_wtf import CSRFProtect
 from werkzeug.exceptions import HTTPException
 from werkzeug.security import check_password_hash, generate_password_hash
 
 import capacity
+import db as db_module
 import recommend
 from classify import ai_client, extract_task_from_text, generate_weekly_summary
-from db import db  # re-export: tests import the handle as `from app import db`
-import db as db_module
+from db import db  # noqa: F401 -- re-export: tests import the handle as `from app import db`
 from events import events_between
+from flask_session import Session
 
 load_dotenv()
 
@@ -162,7 +162,8 @@ def validate_capture_fields(form):
 # Slice C: relationship aging/escalation. Pure functions (like
 # validate_task_form above) so they're directly unit-testable without a
 # request context; routes below just annotate query results with them.
-STALE_DAYS_THRESHOLD = 3  # waiting/delegation items untouched this long get nudged even with no due date
+# waiting/delegation items untouched this long get nudged even with no due date
+STALE_DAYS_THRESHOLD = 3
 
 
 def item_age_days(item, now=None):
