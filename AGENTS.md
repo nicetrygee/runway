@@ -32,6 +32,8 @@ Set a `SECRET_KEY` via env or `.env` (gitignored, see `.env.example`) — the ap
 
 `flask run` is fine for active coding, but it dies the moment you close the terminal and won't come back on its own. For "keep this running without me watching it," use Gunicorn (multi-worker, replaces a crashed worker automatically) under launchd (macOS's service manager, restarts the whole process if it dies):
 
+First, edit `deploy/com.nicetrygee.runway.plist` and replace the `/path/to/runway` placeholders with this repo's absolute path on your machine — plist files can't expand `$HOME` or env vars.
+
 ```bash
 launchctl load deploy/com.nicetrygee.runway.plist    # start it (also survives crashes)
 launchctl unload deploy/com.nicetrygee.runway.plist  # stop it for good

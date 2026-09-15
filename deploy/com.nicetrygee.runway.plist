@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Replace every /path/to/runway below with this repo's absolute path on
+     your machine before loading (plist files can't expand env vars like $HOME). -->
 <plist version="1.0">
 <dict>
     <key>Label</key>
@@ -7,7 +9,7 @@
 
     <key>ProgramArguments</key>
     <array>
-        <string>/Users/gregg.roseker/vscode_repos/runway/venv/bin/gunicorn</string>
+        <string>/path/to/runway/venv/bin/gunicorn</string>
         <string>app:app</string>
         <string>--bind</string>
         <string>127.0.0.1:8000</string>
@@ -16,7 +18,7 @@
     </array>
 
     <key>WorkingDirectory</key>
-    <string>/Users/gregg.roseker/vscode_repos/runway</string>
+    <string>/path/to/runway</string>
 
     <key>RunAtLoad</key>
     <false/>
@@ -25,9 +27,9 @@
     <true/>
 
     <key>StandardOutPath</key>
-    <string>/Users/gregg.roseker/vscode_repos/runway/logs/gunicorn.log</string>
+    <string>/path/to/runway/logs/gunicorn.log</string>
 
     <key>StandardErrorPath</key>
-    <string>/Users/gregg.roseker/vscode_repos/runway/logs/gunicorn-error.log</string>
+    <string>/path/to/runway/logs/gunicorn-error.log</string>
 </dict>
 </plist>
