@@ -1,7 +1,7 @@
 # Minimal image for local/demo use. SQLite lives inside the container, so
 # data doesn't survive a rebuild unless you mount a volume over /app/runway.db
 # — see the "Docker" section in README.md.
-FROM python:3.12-slim
+FROM python:3.14-slim
 
 WORKDIR /app
 
