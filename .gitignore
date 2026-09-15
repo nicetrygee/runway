@@ -1,7 +1,9 @@
 runway.db
+*.bak
 __pycache__/
 *.pyc
 flask_session/
 .env
 logs/
 venv/
+.DS_Store

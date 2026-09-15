@@ -40,6 +40,12 @@ app = Flask(__name__)
 app.config["SECRET_KEY"] = SECRET_KEY
 app.config["SESSION_PERMANENT"] = False
 app.config["SESSION_TYPE"] = "filesystem"
+app.config["SESSION_COOKIE_HTTPONLY"] = True
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+# Off by default so local HTTP dev (and an HTTP-only deployment) still works —
+# the browser silently drops the cookie over plain HTTP if this is on. Set
+# SESSION_COOKIE_SECURE=1 once the app is served over HTTPS.
+app.config["SESSION_COOKIE_SECURE"] = os.environ.get("SESSION_COOKIE_SECURE") == "1"
 # Filesystem sessions never expire on their own; once the count passes this
 # threshold, flask-session prunes the oldest files on each new session write.
 app.config["SESSION_CLIENT"] = FileSystemCache(
