@@ -8,6 +8,12 @@ A personal cognition aid for Engineering Managers — not another task tracker. 
 
 *(screenshot predates the assembled dashboard below — see "What it does")*
 
+## How it was built
+
+I'm an engineering manager, not a working developer, and I built it with Claude Code doing most of the typing with me reviewing every change. My job was the same one I'd do on any team: decide what we're building, set the bar and check the work against it.
+
+The product and design decisions were mine. For example, keeping recommend.py and capacity.py as pure functions so the ranking logic could be tested without the app. I set the engineering standards before much code existed: tests for every module, lint and type checks in CI on every push, server-side validation that mirrors the schema constraints, and rate limiting on auth. Those standards reside in AGENTS.md, which is the brief the agent works from.
+
 ## Quickstart
 
 ```bash
