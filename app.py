@@ -519,12 +519,17 @@ def review():
     if request.method == "POST":
         action = request.form.get("action")
         if action == "carry_forward":
-            item_ids = request.form.getlist("item_id")
-            for item_id in item_ids:
-                db_module.carry_forward_item(int(item_id), uid)
-            flash(f"Carried {len(item_ids)} item(s) into next week." if item_ids
+            carried = 0
+            for raw_id in request.form.getlist("item_id"):
+                try:
+                    item_id = int(raw_id)
+                except ValueError:
+                    continue
+                if db_module.carry_forward_item(item_id, uid):
+                    carried += 1
+            flash(f"Carried {carried} item(s) into next week." if carried
                   else "No items selected to carry forward.",
-                  "success" if item_ids else "error")
+                  "success" if carried else "error")
         elif action == "update_settings":
             available_hours = request.form.get("available_hours", "").strip()
             meeting_hours = request.form.get("meeting_hours_this_week", "").strip()
@@ -634,7 +639,8 @@ def update_status(task_id):
     new_status = (request.get_json(silent=True) or {}).get("status")
     if new_status not in VALID_STATUSES:
         return jsonify({"error": "Invalid status"}), 400
-    db_module.set_status(task_id, session["user_id"], new_status)
+    if not db_module.set_status(task_id, session["user_id"], new_status):
+        return jsonify({"error": "Task not found"}), 404
     return jsonify({"ok": True})
 
 # Login / Logout / Register

@@ -144,3 +144,29 @@ def test_status_endpoint_invalid(logged_in_client):
     )
     assert resp.status_code == 400
     assert resp.get_json() == {"error": "Invalid status"}
+
+
+def test_status_endpoint_rejects_other_users_task(client):
+    client.post("/register", data={"username": "alice", "password": "password123"})
+    client.post("/login", data={"username": "alice", "password": "password123"})
+    task_id = _add_task(client)
+    client.get("/logout")
+
+    client.post("/register", data={"username": "bob", "password": "password123"})
+    client.post("/login", data={"username": "bob", "password": "password123"})
+    resp = client.post(
+        f"/status/{task_id}",
+        data=json.dumps({"status": "done"}),
+        content_type="application/json",
+    )
+    assert resp.status_code == 404
+    assert resp.get_json() == {"error": "Task not found"}
+
+    from app import db
+
+    assert db.execute("SELECT status FROM tasks WHERE id = ?", task_id)[0]["status"] == "backlog"
+    events = db.execute(
+        "SELECT * FROM events WHERE item_id = ? AND event_type IN ('status_changed', 'completed')",
+        task_id,
+    )
+    assert events == []

@@ -88,14 +88,18 @@ def delete_task(task_id, user_id):
 
 
 def set_status(task_id, user_id, status):
-    db.execute(
+    """Returns False (and logs nothing) if the task isn't this user's."""
+    updated = db.execute(
         """UPDATE tasks SET status=?, updated_at=CURRENT_TIMESTAMP,
            last_touched_at=CURRENT_TIMESTAMP WHERE id=? AND user_id=?""",
         status, task_id, user_id
     )
+    if not updated:
+        return False
     log_event(user_id, task_id, "status_changed", payload={"status": status})
     if status == "done":
         log_event(user_id, task_id, "completed")
+    return True
 
 
 def _parse_date(value):
@@ -251,13 +255,17 @@ def carry_forward_item(item_id, user_id):
     """Mark an open item as explicitly carried into next week: a log-only
     reset (no status/due_date change) via a 'touched' event tagged with a
     carry_forward payload marker, since 'carry_forward' isn't one of
-    events.event_type's fixed CHECK values."""
-    db.execute(
+    events.event_type's fixed CHECK values. Returns False (and logs nothing)
+    if the item isn't this user's."""
+    updated = db.execute(
         """UPDATE tasks SET last_touched_at = CURRENT_TIMESTAMP
            WHERE id = ? AND user_id = ?""",
         item_id, user_id
     )
+    if not updated:
+        return False
     log_event(user_id, item_id, "touched", payload={"action": "carry_forward"})
+    return True
 
 
 def get_setting(user_id, key, default=None):
