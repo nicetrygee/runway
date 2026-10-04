@@ -4,9 +4,13 @@
 
 A personal cognition aid for Engineering Managers — not another task tracker. An EM juggles incidents, RFCs, 1:1s, hiring, and delivery work in the same afternoon, plus the promises they've made, the people they're waiting on, and the work they've handed off. Runway's job is to answer, at a glance: **what should I do right now, what am I waiting on, what am I neglecting, and where am I a bottleneck** — deriving that from state, time, and relationships instead of just listing tasks.
 
-![Runway dashboard](docs/dashboard.png)
+![Runway dashboard: what to do now, what you're waiting on, what you're neglecting, where you're a bottleneck, and capacity](docs/dashboard.png)
 
-*(screenshot predates the assembled dashboard below — see "What it does")*
+The `/now` view ranks what fits the time you have and says why each item is next:
+
+![Runway /now view: ranked next actions, each with the reason it's next](docs/now.png)
+
+*(Screenshots use fictional demo data.)*
 
 ## How it was built
 

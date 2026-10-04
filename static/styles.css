@@ -157,9 +157,6 @@ button[type="submit"] { background: var(--accent); color: #000; border: none; pa
   padding: 1rem 0;
 }
 
-/* Remove the old task-grid rule if present */
-.task-grid { display: none; }
-
 /* Responsive — stack columns on smaller screens */
 @media (max-width: 900px) {
   .kanban { grid-template-columns: repeat(2, 1fr); }
