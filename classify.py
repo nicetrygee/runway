@@ -4,11 +4,12 @@ Quick-add (AI) is optional — the app runs fine without an API key, the
 feature just flashes an error if used unconfigured (see app.py's quick_add).
 """
 import os
-from datetime import datetime
 from typing import Literal
 
 import anthropic
 from pydantic import BaseModel
+
+import clock
 
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY")
 ai_client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY) if ANTHROPIC_API_KEY else None
@@ -44,7 +45,7 @@ class WeeklySummary(BaseModel):
 
 def extract_task_from_text(text):
     """Turn a freeform note into structured task fields via Claude."""
-    today = datetime.now().strftime("%Y-%m-%d")
+    today = clock.utc_now().strftime("%Y-%m-%d")
     response = ai_client.messages.parse(
         model="claude-sonnet-5",
         max_tokens=1024,

@@ -1,6 +1,6 @@
 import logging
 import os
-from datetime import datetime, timezone
+from datetime import datetime
 from functools import wraps
 
 import anthropic
@@ -15,6 +15,7 @@ from werkzeug.exceptions import HTTPException
 from werkzeug.security import check_password_hash, generate_password_hash
 
 import capacity
+import clock
 import db as db_module
 import recommend
 from classify import ai_client, extract_task_from_text, generate_weekly_summary
@@ -168,7 +169,7 @@ STALE_DAYS_THRESHOLD = 3
 
 def item_age_days(item, now=None):
     """Days since this item's last_touched_at."""
-    now = now or datetime.now(timezone.utc).replace(tzinfo=None)
+    now = now or clock.utc_now()
     touched = datetime.strptime(item["last_touched_at"], "%Y-%m-%d %H:%M:%S")
     return (now - touched).days
 
@@ -179,7 +180,7 @@ def escalation_for_item(item, now=None):
     is mine to keep, not to chase."""
     if item["stream"] not in ("waiting", "delegation"):
         return None
-    now = now or datetime.now(timezone.utc).replace(tzinfo=None)
+    now = now or clock.utc_now()
     due = item["due_date"]
     if due:
         due_date = datetime.strptime(due, "%Y-%m-%d").date()
@@ -218,7 +219,7 @@ DASHBOARD_NOW_MINUTES = 60  # default assumed availability for the glance widget
 
 
 def _dashboard_context(uid):
-    now_ts = datetime.now(timezone.utc).replace(tzinfo=None)
+    now_ts = clock.utc_now()
 
     candidate_items = db_module.candidate_items_for_user(uid)
     now_recs = recommend.recommend(
@@ -275,7 +276,7 @@ def now():
         available_minutes = 60
 
     items = db_module.candidate_items_for_user(uid)
-    now_ts = datetime.now()
+    now_ts = clock.utc_now()
     recs = recommend.recommend(items, available_minutes=available_minutes, now=now_ts)
 
     if not recs:
@@ -394,7 +395,7 @@ def _stream_view(stream):
     """Fetch + annotate one stream's items with age/escalation, and group
     them by counterparty for the templates."""
     uid = session["user_id"]
-    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    now = clock.utc_now()
     items = []
     for row in db_module.items_by_stream(uid, stream):
         item = dict(row)
@@ -543,7 +544,7 @@ def review():
                 flash("Available hours and meeting hours must be numbers.", "error")
         return redirect("/review")
 
-    start, end = capacity.week_bounds(datetime.now())
+    start, end = capacity.week_bounds(clock.utc_now())
     completed_items = db_module.completed_between(uid, start, end)
     week_events = events_between(uid, start, end)
     open_items = db_module.open_items(uid)
