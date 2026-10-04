@@ -57,7 +57,7 @@ mypy .            # type check
 pytest tests/ -v
 ```
 
-155 tests covering auth, CSRF, rate limiting, the global error handler, item capture/classification, the recommendation engine, relationship surfaces (commitments/waiting/delegated/people), weekly review + capacity, the assembled dashboard, and the schema migrations. CI runs lint, type checks, and the suite on every push/PR to `main`; Dependabot keeps dependencies patched weekly.
+158 tests covering auth, CSRF, rate limiting, the global error handler, item capture/classification, the recommendation engine, relationship surfaces (commitments/waiting/delegated/people), weekly review + capacity, the assembled dashboard, and the schema migrations. CI runs lint, type checks, and the suite on every push/PR to `main`; Dependabot keeps dependencies patched weekly.
 
 ## What it does
 
