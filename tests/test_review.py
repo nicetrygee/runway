@@ -119,6 +119,36 @@ def test_carried_forward_item_drops_off_the_carry_forward_list(logged_in_client)
     assert b">1</span> Carried Forward" in resp.data
 
 
+def test_carry_forward_rejects_other_users_item(client):
+    client.post("/register", data={"username": "alice", "password": "password123"})
+    alice_item = seed_item(get_user_id("alice"), "Alice's item")
+    client.post("/register", data={"username": "bob", "password": "password123"})
+    client.post("/login", data={"username": "bob", "password": "password123"})
+
+    resp = client.post(
+        "/review", data={"action": "carry_forward", "item_id": [str(alice_item)]},
+        follow_redirects=True,
+    )
+    assert resp.status_code == 200
+    assert b"No items selected to carry forward" in resp.data
+
+    events = app_module.db.execute(
+        "SELECT * FROM events WHERE item_id = ? AND event_type = 'touched'", alice_item
+    )
+    assert events == []
+
+
+def test_carry_forward_ignores_non_numeric_ids(logged_in_client):
+    item_id = seed_item(get_user_id("alice"), "Keep going next week")
+
+    resp = logged_in_client.post(
+        "/review", data={"action": "carry_forward", "item_id": ["abc", str(item_id)]},
+        follow_redirects=True,
+    )
+    assert resp.status_code == 200
+    assert b"Carried 1 item(s) into next week" in resp.data
+
+
 def test_settings_round_trip(logged_in_client):
     resp = logged_in_client.post(
         "/review",
