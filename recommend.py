@@ -1,8 +1,8 @@
 """Runway recommendation engine — "What should I do now?"
 
 PURE MODULE. No DB, no Flask, no network, no LLM. Inputs are plain data,
-output is a ranked list. This is what makes it unit-testable and the ideal
-test-first target: implement against tests/test_recommend.py (Slice B).
+output is a ranked list, so it's unit-tested directly in
+tests/test_recommend.py without a running app.
 
 Design contract (see docs/technical-design.md):
   - Candidates are items in MY court: stream in {'task','commitment'},
