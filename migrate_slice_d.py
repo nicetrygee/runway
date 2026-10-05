@@ -1,9 +1,9 @@
-"""Idempotent Slice D migration for an existing runway.db.
+"""Idempotent Slice D migration for a runway.db created before the
+`settings` table existed.
 
-Additive only: adds the `settings` table (user_id, key, value) used for
-per-user weekly-review preferences (available_hours, meeting_hours_this_week).
-Does not touch `tasks`, `people`, or `events` — those are Slice 0's schema,
-untouched here. Safe to run repeatedly.
+Adds the `settings` table (user_id, key, value) used for per-user
+weekly-review preferences. Fresh installs get it from schema.sql; the DDL
+here must match that file. Safe to run repeatedly.
 
 Usage:
     python migrate_slice_d.py                 # uses ./runway.db (or $DATABASE_URL)
@@ -22,8 +22,7 @@ def db_path_from_env_or_arg():
 
 
 def ensure_settings_table(cur):
-    """Create the settings table + index if missing. Shared by main() and
-    tests/conftest.py so the DDL lives in exactly one place."""
+    """Create the settings table + index if missing."""
     cur.executescript(
         """
         CREATE TABLE IF NOT EXISTS settings (

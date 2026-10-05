@@ -92,3 +92,16 @@ CREATE TABLE IF NOT EXISTS events (
 
 CREATE INDEX IF NOT EXISTS idx_events_user_id ON events(user_id);
 CREATE INDEX IF NOT EXISTS idx_events_item_id ON events(item_id);
+
+-- Per-user preferences (weekly-review available_hours, meeting_hours_this_week).
+CREATE TABLE IF NOT EXISTS settings (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    key TEXT NOT NULL,
+    value TEXT,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(user_id) REFERENCES users(id),
+    UNIQUE(user_id, key)
+);
+
+CREATE INDEX IF NOT EXISTS idx_settings_user_id ON settings(user_id);

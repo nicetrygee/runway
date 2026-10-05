@@ -13,7 +13,6 @@ TEST_DB_FD, TEST_DB_PATH = tempfile.mkstemp(suffix=".db")
 os.environ["DATABASE_URL"] = f"sqlite:///{TEST_DB_PATH}"
 
 import app as app_module  # noqa: E402  (must import after env vars are set)
-import migrate_slice_d  # noqa: E402
 
 SCHEMA_PATH = os.path.join(os.path.dirname(__file__), "..", "schema.sql")
 with open(SCHEMA_PATH) as f:
@@ -35,8 +34,6 @@ def reset_db():
         "DROP TABLE IF EXISTS users;"
     )
     conn.executescript(SCHEMA_SQL)
-    # The settings table lives in migrate_slice_d.py, not schema.sql.
-    migrate_slice_d.ensure_settings_table(conn.cursor())
     conn.commit()
     conn.close()
     # Limiter storage is a module-level singleton shared across the whole

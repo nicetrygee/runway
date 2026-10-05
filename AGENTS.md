@@ -25,7 +25,6 @@ relationships. Never build toward being a Jira/Linear clone.
 ```bash
 python3 -m venv venv && source venv/bin/activate && pip install -r requirements.txt
 sqlite3 runway.db < schema.sql
-python3 migrate_slice_d.py   # adds the settings table (not in schema.sql)
 ```
 
 ```bash
@@ -65,17 +64,16 @@ mypy .            # type check
 pytest tests/ -v
 ```
 
-Tests don't touch `runway.db` — `tests/conftest.py` points `DATABASE_URL` at a temp SQLite file (bootstrapped from `schema.sql` plus the Slice D `settings` table, reset before every test) and sets `SECRET_KEY` itself, so no `.env` is needed. It also calls `limiter.reset()` before every test since `flask_limiter`'s in-memory storage is a module-level singleton shared across the whole test session — without the reset, one test's requests count against another's rate-limit budget. CI (`.github/workflows/ci.yml`) runs ruff, mypy, and the suite on every push/PR to `main`; all three must pass.
+Tests don't touch `runway.db` — `tests/conftest.py` points `DATABASE_URL` at a temp SQLite file (bootstrapped from `schema.sql`, reset before every test) and sets `SECRET_KEY` itself, so no `.env` is needed. It also calls `limiter.reset()` before every test since `flask_limiter`'s in-memory storage is a module-level singleton shared across the whole test session — without the reset, one test's requests count against another's rate-limit budget. CI (`.github/workflows/ci.yml`) runs ruff, mypy, and the suite on every push/PR to `main`; all three must pass.
 
 ## DB
 
 - SQLite via `cs50.SQL`. DB path comes from `DATABASE_URL` env var, defaulting to `sqlite:///runway.db` (gitignored) — tests override this to point at a temp file.
-- On first query, `cs50.SQL` auto-creates the file if it doesn't exist, but tables are only created if `schema.sql` has been executed. Bootstrap a fresh db with `schema.sql`, then `migrate_slice_d.py` for the `settings` table:
+- On first query, `cs50.SQL` auto-creates the file if it doesn't exist, but tables are only created if `schema.sql` has been executed. Bootstrap a fresh db with `schema.sql` alone; it is the complete current schema:
   ```bash
   sqlite3 runway.db < schema.sql
-  python3 migrate_slice_d.py
   ```
-- Upgrading a db created before Slice 0: run `migrate_slice0.py` (additive, idempotent), then `migrate_slice_d.py`.
+- Upgrading an older db: run `migrate_slice0.py` (pre-Slice-0 dbs), then `migrate_slice_d.py` (dbs without `settings`). Both are idempotent, so running both is always safe. Any new migration must leave the db matching `schema.sql`.
 - Query placeholder style is `?` (not `%s` or `:named`). This is the cs50 library convention.
 - `tasks.user_id` has an explicit index (`idx_tasks_user_id`) since every dashboard query filters on it. If you're bootstrapping against an existing `runway.db` created before this was added, re-run `schema.sql` (the `CREATE INDEX IF NOT EXISTS` is safe to apply to an already-populated table).
 

@@ -186,7 +186,7 @@ Then four slices in parallel, each on its own branch and PR, because they touch 
 - **`log_event` lives in `db.py`; `events.py` is read-only.** This keeps the import graph acyclic (`events → db`, never the reverse). Each task write and its event append run inside `db.transaction()`, so they commit or roll back together (PR #27).
 - **`task_type` was kept, not replaced.** It's still required and shown in the UI, alongside `item_type`. `item_type` is nullable, and displays fall back to `task_type` when it's unset.
 - **Events cascade on item delete.** `events.item_id` is `ON DELETE CASCADE` and cs50 enables SQLite foreign keys, so deleting a task removes its history. That's a real exception to "append-only, never deleted".
-- **A `settings` table was added in Slice D**, holding per-user `available_hours` and `meeting_hours_this_week`. It's created by `migrate_slice_d.py`, not `schema.sql`.
+- **A `settings` table was added in Slice D**, holding per-user `available_hours` and `meeting_hours_this_week`. It was first created only by `migrate_slice_d.py`; it has since been folded into `schema.sql`, with the script kept as the upgrade path for older dbs.
 - **Timestamps are naive UTC** from SQLite's `CURRENT_TIMESTAMP`, and the code gets "now" from `clock.utc_now()` (`clock.py`, added Oct 2026) so comparisons don't drift by the server's UTC offset.
 - **The context-switch penalty is implemented but not wired.** `recommend()` accepts `recent_item_type`, but `/now` doesn't pass it, so `W_SWITCH` currently has no effect.
 - **The weekly AI narrative is off by default**, behind `WEEKLY_SUMMARY_AI_ENABLED=1`, even when an API key is set, because it's a real paid call.

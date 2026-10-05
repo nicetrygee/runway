@@ -23,7 +23,6 @@ The product and design decisions were mine. For example, keeping recommend.py an
 ```bash
 python3 -m venv venv && source venv/bin/activate && pip install -r requirements.txt
 sqlite3 runway.db < schema.sql
-python3 migrate_slice_d.py   # adds the settings table (available hours, meeting hours)
 ```
 
 Copy `.env.example` to `.env` and set `SECRET_KEY` — the app won't start without it.
