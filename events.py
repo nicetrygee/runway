@@ -1,7 +1,7 @@
 """Read-side helpers over the append-only events log.
 
-log_event (the write side) lives in db.py so a task write and its event
-append happen atomically in one function call, on the same db handle,
+log_event (the write side) lives in db.py, next to the task writes that
+call it inside db.transaction(), so a write and its event commit together
 without a circular import between db.py and this module. This module only
 reads — nothing here ever INSERTs, UPDATEs, or DELETEs.
 """

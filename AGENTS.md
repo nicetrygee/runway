@@ -82,7 +82,7 @@ Tests don't touch `runway.db` — `tests/conftest.py` points `DATABASE_URL` at a
 ## Architecture
 
 - **Module split (Slice 0 foundation)**: `app.py` is now thin — Flask wiring, routes, the auth decorator, config, and the error handler. Everything else moved out:
-  - `db.py` — every DB query, one named function per read/write, plus `log_event` (an event append is just another INSERT on the same handle, so a write and its event stay atomic). `app.py` re-exports the handle with `from db import db` so `from app import db` still resolves (existing tests rely on this).
+  - `db.py` — every DB query, one named function per read/write, plus `log_event`. Every task write and its event append run inside `with transaction():`, so they commit or roll back together. `app.py` re-exports the handle with `from db import db` so `from app import db` still resolves (existing tests rely on this).
   - `classify.py` — AI extraction: `ExtractedTask`, `WeeklySummary`, `extract_task_from_text`, `generate_weekly_summary`, the `ai_client` setup.
   - `events.py` — read-only history helpers (`timeline_for_item`, `events_between`, `event_counts`, `last_followup_for_item`). Write-side (`log_event`) stays in `db.py` on purpose — keeps the import graph acyclic (`app → db`, `app → classify`, `events → db`, `app`/`classify → clock`; nothing imports `app`).
   - `recommend.py` — the pure recommendation engine (Slice B): candidate filter, hard time-fit filter with a smallest-first fallback, weighted score (priority, due urgency, blocking, staleness, minus a context-switch penalty), and a plain-English reason per item. Weights are constants at the top of the file.

@@ -1,13 +1,14 @@
 """All database access lives here — one function per read/write.
 
-Includes log_event: an event append is just another INSERT on the same `db`
-handle, so a task write and its event row stay atomic in the same function
-call. events.py (read-side helpers) imports `db` from here rather than the
+Includes log_event. Every function that writes a task row and appends its
+event does both inside `with transaction():`, so either both land or neither
+does. events.py (read-side helpers) imports `db` from here rather than the
 other way around, keeping the import graph acyclic. recommend.py must stay
 DB-free, so the row -> recommend.Item mapping (Slice B) lives here instead.
 """
 import json
 import os
+from contextlib import contextmanager
 from datetime import date, datetime
 
 from cs50 import SQL
@@ -15,6 +16,35 @@ from cs50 import SQL
 from recommend import Item
 
 db = SQL(os.environ.get("DATABASE_URL", "sqlite:///runway.db"))
+
+
+@contextmanager
+def transaction():
+    """Run the enclosed db.execute calls as one transaction.
+
+    cs50's SQL holds a per-thread connection open between an explicit BEGIN
+    and COMMIT/ROLLBACK, so everything in the block shares it. Not reentrant.
+
+    cs50 only clears its in-transaction flag when a COMMIT/ROLLBACK
+    succeeds. If a statement hits an OperationalError, cs50 has already
+    dropped the connection (which rolls it back) and our ROLLBACK then
+    fails, so the flag is reset by hand; otherwise cs50 would keep treating
+    later statements as part of an open transaction. The flag is
+    per-instance rather than per-thread, which is fine under gunicorn's
+    default single-threaded sync workers.
+    """
+    db.execute("BEGIN")
+    try:
+        yield
+        db.execute("COMMIT")
+    except BaseException:
+        try:
+            db.execute("ROLLBACK")
+        except RuntimeError:
+            pass
+        finally:
+            db._autocommit = True
+        raise
 
 
 def log_event(user_id, item_id, event_type, payload=None, person_id=None):
@@ -50,16 +80,17 @@ def get_task(task_id, user_id):
 def insert_task(user_id, title, task_type, blast_radius, sprint, cognitive_load,
                  due_date, notes, *, stream="task", item_type=None, priority="Normal",
                  effort_minutes=None, mode="reactive", person_id=None):
-    item_id = db.execute(
-        """INSERT INTO tasks (user_id, title, task_type, blast_radius, sprint,
-           cognitive_load, due_date, notes, stream, item_type, priority,
-           effort_minutes, mode, person_id, last_touched_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)""",
-        user_id, title, task_type, blast_radius, sprint, cognitive_load, due_date, notes,
-        stream, item_type, priority, effort_minutes, mode, person_id
-    )
-    log_event(user_id, item_id, "created", person_id=person_id)
-    return item_id
+    with transaction():
+        item_id = db.execute(
+            """INSERT INTO tasks (user_id, title, task_type, blast_radius, sprint,
+               cognitive_load, due_date, notes, stream, item_type, priority,
+               effort_minutes, mode, person_id, last_touched_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)""",
+            user_id, title, task_type, blast_radius, sprint, cognitive_load, due_date, notes,
+            stream, item_type, priority, effort_minutes, mode, person_id
+        )
+        log_event(user_id, item_id, "created", person_id=person_id)
+        return item_id
 
 
 def get_or_create_person(user_id, name):
@@ -72,15 +103,16 @@ def get_or_create_person(user_id, name):
 
 def update_task(task_id, user_id, title, task_type, status, blast_radius, sprint,
                  cognitive_load, due_date, notes):
-    db.execute(
-        """UPDATE tasks SET title=?, task_type=?, status=?, blast_radius=?,
-           sprint=?, cognitive_load=?, due_date=?, notes=?,
-           updated_at=CURRENT_TIMESTAMP, last_touched_at=CURRENT_TIMESTAMP
-           WHERE id=? AND user_id=?""",
-        title, task_type, status, blast_radius, sprint, cognitive_load, due_date, notes,
-        task_id, user_id
-    )
-    log_event(user_id, task_id, "touched")
+    with transaction():
+        db.execute(
+            """UPDATE tasks SET title=?, task_type=?, status=?, blast_radius=?,
+               sprint=?, cognitive_load=?, due_date=?, notes=?,
+               updated_at=CURRENT_TIMESTAMP, last_touched_at=CURRENT_TIMESTAMP
+               WHERE id=? AND user_id=?""",
+            title, task_type, status, blast_radius, sprint, cognitive_load, due_date, notes,
+            task_id, user_id
+        )
+        log_event(user_id, task_id, "touched")
 
 
 def delete_task(task_id, user_id):
@@ -89,17 +121,18 @@ def delete_task(task_id, user_id):
 
 def set_status(task_id, user_id, status):
     """Returns False (and logs nothing) if the task isn't this user's."""
-    updated = db.execute(
-        """UPDATE tasks SET status=?, updated_at=CURRENT_TIMESTAMP,
-           last_touched_at=CURRENT_TIMESTAMP WHERE id=? AND user_id=?""",
-        status, task_id, user_id
-    )
-    if not updated:
-        return False
-    log_event(user_id, task_id, "status_changed", payload={"status": status})
-    if status == "done":
-        log_event(user_id, task_id, "completed")
-    return True
+    with transaction():
+        updated = db.execute(
+            """UPDATE tasks SET status=?, updated_at=CURRENT_TIMESTAMP,
+               last_touched_at=CURRENT_TIMESTAMP WHERE id=? AND user_id=?""",
+            status, task_id, user_id
+        )
+        if not updated:
+            return False
+        log_event(user_id, task_id, "status_changed", payload={"status": status})
+        if status == "done":
+            log_event(user_id, task_id, "completed")
+        return True
 
 
 def _parse_date(value):
@@ -227,12 +260,13 @@ def open_items_for_person(person_id, user_id):
 def follow_up(item_id, user_id):
     """Log that the user chased this item: bumps last_touched_at and
     appends a followed_up event, same shape as set_status."""
-    db.execute(
-        """UPDATE tasks SET last_touched_at=CURRENT_TIMESTAMP
-           WHERE id=? AND user_id=?""",
-        item_id, user_id
-    )
-    log_event(user_id, item_id, "followed_up")
+    with transaction():
+        db.execute(
+            """UPDATE tasks SET last_touched_at=CURRENT_TIMESTAMP
+               WHERE id=? AND user_id=?""",
+            item_id, user_id
+        )
+        log_event(user_id, item_id, "followed_up")
 
 
 def set_relationship(item_id, user_id, stream, person_id):
@@ -241,14 +275,15 @@ def set_relationship(item_id, user_id, stream, person_id):
     Kept separate from update_task so that function's existing positional
     signature (and the tests calling it) doesn't have to change.
     """
-    db.execute(
-        """UPDATE tasks SET stream=?, person_id=?, updated_at=CURRENT_TIMESTAMP,
-           last_touched_at=CURRENT_TIMESTAMP WHERE id=? AND user_id=?""",
-        stream, person_id, item_id, user_id
-    )
-    event_type = "delegated" if stream == "delegation" else "touched"
-    log_event(user_id, item_id, event_type,
-              payload={"stream": stream, "person_id": person_id}, person_id=person_id)
+    with transaction():
+        db.execute(
+            """UPDATE tasks SET stream=?, person_id=?, updated_at=CURRENT_TIMESTAMP,
+               last_touched_at=CURRENT_TIMESTAMP WHERE id=? AND user_id=?""",
+            stream, person_id, item_id, user_id
+        )
+        event_type = "delegated" if stream == "delegation" else "touched"
+        log_event(user_id, item_id, event_type,
+                  payload={"stream": stream, "person_id": person_id}, person_id=person_id)
 
 
 def carry_forward_item(item_id, user_id):
@@ -257,15 +292,16 @@ def carry_forward_item(item_id, user_id):
     carry_forward payload marker, since 'carry_forward' isn't one of
     events.event_type's fixed CHECK values. Returns False (and logs nothing)
     if the item isn't this user's."""
-    updated = db.execute(
-        """UPDATE tasks SET last_touched_at = CURRENT_TIMESTAMP
-           WHERE id = ? AND user_id = ?""",
-        item_id, user_id
-    )
-    if not updated:
-        return False
-    log_event(user_id, item_id, "touched", payload={"action": "carry_forward"})
-    return True
+    with transaction():
+        updated = db.execute(
+            """UPDATE tasks SET last_touched_at = CURRENT_TIMESTAMP
+               WHERE id = ? AND user_id = ?""",
+            item_id, user_id
+        )
+        if not updated:
+            return False
+        log_event(user_id, item_id, "touched", payload={"action": "carry_forward"})
+        return True
 
 
 def get_setting(user_id, key, default=None):
