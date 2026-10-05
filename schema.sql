@@ -1,4 +1,4 @@
--- Runway schema — fresh installs (Slice 0 foundation)
+-- Runway schema — fresh installs
 -- Existing DBs: run migrate_slice0.py instead; it applies the same changes additively.
 -- Convention: every new enum here is mirrored by a VALID_* list in code and by AGENTS.md.
 
@@ -9,14 +9,14 @@ CREATE TABLE IF NOT EXISTS users (
 );
 
 -- Kept named `tasks` for continuity; conceptually these are "items".
--- task_type is retained (legacy, still used by the current UI) and coexists
--- with item_type until Slice A migrates the capture/validation UI over.
+-- task_type (the original, coarser taxonomy) is still required and shown in
+-- the UI; item_type is the EM taxonomy. Both are stored.
 CREATE TABLE IF NOT EXISTS tasks (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
     title TEXT NOT NULL,
 
-    -- legacy taxonomy (unchanged)
+    -- original taxonomy
     task_type TEXT NOT NULL CHECK(task_type IN ('incident','rfc','1on1','hiring','delivery','other')),
     status TEXT NOT NULL DEFAULT 'backlog' CHECK(status IN ('backlog','in_progress','blocked','done')),
     blast_radius TEXT,
@@ -25,12 +25,12 @@ CREATE TABLE IF NOT EXISTS tasks (
     due_date TEXT,
     notes TEXT,
 
-    -- Slice 0 additions -------------------------------------------------
+    -- EM item model ----------------------------------------------------
     -- direction of the item; three of the four EM questions are the same
     -- relationship seen from a different side.
     stream TEXT NOT NULL DEFAULT 'task'
         CHECK(stream IN ('task','commitment','delegation','waiting')),
-    -- new EM taxonomy; nullable while task_type still drives the UI.
+    -- EM taxonomy; nullable, and displays fall back to task_type when unset.
     item_type TEXT
         CHECK(item_type IS NULL OR item_type IN
             ('People','Delivery','Technical','Stakeholder','Strategy','Hiring','Operational','Personal-admin')),

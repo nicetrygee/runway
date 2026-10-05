@@ -1,8 +1,7 @@
-"""Behavioural spec for the recommendation engine (Slice B target).
+"""Behavioural spec for the recommendation engine.
 
-These tests are written FIRST and are expected to fail until recommend() is
-implemented. They assert observable behaviour, not exact weights, so they
-stay stable while the scoring is tuned.
+They assert observable behaviour, not exact weights, so they stay stable
+while the scoring is tuned.
 
 Run: pytest tests/test_recommend.py
 """

@@ -63,10 +63,8 @@ limiter = Limiter(get_remote_address, app=app)
 VALID_TASK_TYPES = ["incident", "rfc", "1on1", "hiring", "delivery", "other"]
 VALID_STATUSES = ["backlog", "in_progress", "blocked", "done"]
 
-# Slice 0 additions — new `tasks` columns' enums. Kept in sync with the
-# CHECK constraints in schema.sql and listed in AGENTS.md, same discipline
-# as VALID_TASK_TYPES/VALID_STATUSES above. Not yet used by any route/UI —
-# Slice A/B/C/D wire these into forms and validation.
+# EM item model enums. Kept in sync with the CHECK constraints in schema.sql
+# and listed in AGENTS.md.
 VALID_STREAMS = ["task", "commitment", "delegation", "waiting"]
 VALID_ITEM_TYPES = [
     "People", "Delivery", "Technical", "Stakeholder", "Strategy",
@@ -118,10 +116,9 @@ def validate_task_form(form, require_status=False):
 
 
 def validate_capture_fields(form):
-    """Validate the Slice A EM-taxonomy fields on the capture (/add) form.
+    """Validate the EM-taxonomy fields on the capture (/add) form.
 
-    Kept separate from validate_task_form so /edit (which doesn't have these
-    fields) is unaffected.
+    Separate from validate_task_form because /edit doesn't have these fields.
     """
     errors = []
 
@@ -212,9 +209,8 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated
 
-# Assembled from Slices A–D's already-built logic: no new backend feature,
-# just wiring the four North Star questions onto the landing page. Additive
-# only — index()'s existing tasks/stats/kanban are untouched below.
+# The landing page answers the four North Star questions by composing the
+# Now, relationship, and review helpers; it adds no logic of its own.
 DASHBOARD_NOW_MINUTES = 60  # default assumed availability for the glance widget
 
 
@@ -438,10 +434,8 @@ def follow_up(item_id):
     flash("Follow-up logged.", "success")
     return redirect(request.referrer or "/")
 
-# Move an existing item onto a different stream/counterparty. Slice A owns
-# capture/classification; this is the minimal additive control the slice
-# doc allows so items can actually reach the commitment/delegation/waiting
-# surfaces before that slice ships.
+# Move an existing item onto a different stream/counterparty (the
+# "Relationship" form on /edit).
 @app.route("/items/<int:item_id>/relationship", methods=["POST"])
 @login_required
 def set_item_relationship(item_id):

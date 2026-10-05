@@ -21,7 +21,7 @@ from dataclasses import dataclass
 from datetime import date, datetime
 from typing import Optional
 
-# --- tunable weights (start by hand; a later slice can learn these) --------
+# --- tunable weights (hand-set) ---------------------------------------------
 W_PRIORITY = 4.0
 W_DUE = 3.0
 W_BLOCK = 3.0

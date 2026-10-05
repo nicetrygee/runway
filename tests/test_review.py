@@ -1,10 +1,8 @@
 """Route-level tests for /review (Slice D).
 
-Forms (add/edit) don't expose stream/item_type/priority/effort_minutes/mode
-yet (Slice A/B/C/D wire those in as they build their own surfaces — see
-AGENTS.md), so tests seed those columns directly via raw SQL after an
-ordinary insert_task, the same way tests/test_migration.py seeds rows
-directly rather than going through a form.
+Rows are seeded via insert_task plus raw SQL so each test can set exact
+column values (stream, priority, effort_minutes, ...) without going
+through a form.
 """
 import json
 
