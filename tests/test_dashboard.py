@@ -1,9 +1,8 @@
-"""Tests for the EM dashboard assembly (composition of Slices A-D onto `/`).
+"""Tests for the EM dashboard on `/`.
 
-Unit tests for the two new pure capacity.py functions, then route-level
-tests seeding real rows via raw SQL after an ordinary insert_task — same
-pattern tests/test_review.py uses, since forms don't expose
-stream/priority/is_blocking yet.
+Unit tests for capacity.neglected_items / bottleneck_items, then route-level
+tests. Rows are seeded via insert_task plus a raw UPDATE so each test can set
+exact column values (is_blocking, last_touched_at, ...) the forms don't.
 """
 import capacity
 import db as db_module

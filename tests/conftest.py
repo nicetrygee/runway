@@ -21,7 +21,7 @@ with open(SCHEMA_PATH) as f:
 
 app_module.app.config["TESTING"] = True
 # Tests post form data directly without fetching a CSRF token first; disable
-# CSRF checks here so existing tests don't need to thread one through.
+# CSRF checks here so tests don't need to thread one through.
 # test_csrf.py re-enables it for a dedicated check that it's actually wired up.
 app_module.app.config["WTF_CSRF_ENABLED"] = False
 
@@ -35,7 +35,7 @@ def reset_db():
         "DROP TABLE IF EXISTS users;"
     )
     conn.executescript(SCHEMA_SQL)
-    # Slice D's settings table — additive, lives outside schema.sql (Slice 0).
+    # The settings table lives in migrate_slice_d.py, not schema.sql.
     migrate_slice_d.ensure_settings_table(conn.cursor())
     conn.commit()
     conn.close()

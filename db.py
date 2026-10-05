@@ -272,8 +272,9 @@ def follow_up(item_id, user_id):
 def set_relationship(item_id, user_id, stream, person_id):
     """Move an existing item onto a different stream and/or counterparty.
 
-    Kept separate from update_task so that function's existing positional
-    signature (and the tests calling it) doesn't have to change.
+    Separate from update_task because /edit submits the relationship as its
+    own form, and moving an item to delegation logs a `delegated` event
+    rather than `touched`.
     """
     with transaction():
         db.execute(

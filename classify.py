@@ -24,7 +24,7 @@ class ExtractedTask(BaseModel):
     cognitive_load: int
     due_date: str
     notes: str
-    # Slice A additions — mirror VALID_ITEM_TYPES / VALID_PRIORITIES / VALID_STREAMS /
+    # Mirror VALID_ITEM_TYPES / VALID_PRIORITIES / VALID_STREAMS /
     # VALID_MODES (app.py). Same Literal-mirrors-a-runtime-list constraint as task_type above.
     item_type: Literal[
         "People", "Delivery", "Technical", "Stakeholder", "Strategy",
