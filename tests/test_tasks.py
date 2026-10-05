@@ -4,7 +4,7 @@ import json
 def test_add_task_success(logged_in_client):
     resp = logged_in_client.post(
         "/add",
-        data={"title": "Ship the RFC", "task_type": "rfc", "cognitive_load": "3"},
+        data={"title": "Ship the RFC", "item_type": "Technical"},
         follow_redirects=True,
     )
     assert resp.status_code == 200
@@ -13,46 +13,44 @@ def test_add_task_success(logged_in_client):
 
 def test_add_task_missing_title(logged_in_client):
     resp = logged_in_client.post(
-        "/add", data={"title": "", "task_type": "rfc", "cognitive_load": "3"}
+        "/add", data={"title": "", "item_type": "Technical"}
     )
     assert resp.status_code == 200
     assert b"Title is required" in resp.data
 
 
-def test_add_task_invalid_task_type(logged_in_client):
+def test_add_task_missing_item_type(logged_in_client):
+    resp = logged_in_client.post("/add", data={"title": "X"})
+    assert resp.status_code == 200
+    assert b"Invalid item type" in resp.data
+
+
+def test_add_task_invalid_priority(logged_in_client):
     resp = logged_in_client.post(
-        "/add", data={"title": "X", "task_type": "bogus", "cognitive_load": "3"}
+        "/add", data={"title": "X", "item_type": "Technical", "priority": "Urgent!!"}
     )
     assert resp.status_code == 200
-    assert b"Invalid task type" in resp.data
+    assert b"Invalid priority" in resp.data
 
 
-def test_add_task_cognitive_load_out_of_range(logged_in_client):
+def test_add_task_non_numeric_effort(logged_in_client):
     resp = logged_in_client.post(
-        "/add", data={"title": "X", "task_type": "rfc", "cognitive_load": "99"}
+        "/add", data={"title": "X", "item_type": "Technical", "effort_minutes": "abc"}
     )
     assert resp.status_code == 200
-    assert b"between 1 and 5" in resp.data
-
-
-def test_add_task_cognitive_load_non_numeric(logged_in_client):
-    resp = logged_in_client.post(
-        "/add", data={"title": "X", "task_type": "rfc", "cognitive_load": "abc"}
-    )
-    assert resp.status_code == 200
-    assert b"must be a number" in resp.data
+    assert b"Invalid effort" in resp.data
 
 
 def test_add_task_requires_login(client):
     resp = client.post(
-        "/add", data={"title": "X", "task_type": "rfc", "cognitive_load": "3"}
+        "/add", data={"title": "X", "item_type": "Technical"}
     )
     assert resp.status_code == 302
     assert "/login" in resp.headers["Location"]
 
 
 def _add_task(client, **overrides):
-    data = {"title": "Task", "task_type": "rfc", "cognitive_load": "3"}
+    data = {"title": "Task", "item_type": "Technical"}
     data.update(overrides)
     client.post("/add", data=data)
     from app import db
@@ -66,14 +64,60 @@ def test_edit_task_success(logged_in_client):
         f"/edit/{task_id}",
         data={
             "title": "Renamed",
-            "task_type": "incident",
+            "item_type": "Operational",
             "status": "in_progress",
-            "cognitive_load": "5",
         },
         follow_redirects=True,
     )
     assert resp.status_code == 200
     assert b"Renamed" in resp.data
+
+
+def test_edit_task_changes_em_fields(logged_in_client):
+    task_id = _add_task(logged_in_client, priority="Normal", effort_minutes="30", mode="reactive")
+    logged_in_client.post(
+        f"/edit/{task_id}",
+        data={
+            "title": "Task",
+            "item_type": "Strategy",
+            "status": "backlog",
+            "priority": "Critical",
+            "effort_minutes": "240",
+            "mode": "proactive",
+        },
+    )
+
+    from app import db
+
+    row = db.execute(
+        "SELECT item_type, priority, effort_minutes, mode FROM tasks WHERE id = ?", task_id
+    )[0]
+    assert row == {"item_type": "Strategy", "priority": "Critical",
+                   "effort_minutes": 240, "mode": "proactive"}
+
+
+def test_edit_task_can_clear_effort_estimate(logged_in_client):
+    task_id = _add_task(logged_in_client, effort_minutes="30")
+    logged_in_client.post(
+        f"/edit/{task_id}",
+        data={"title": "Task", "item_type": "Technical", "status": "backlog",
+              "effort_minutes": ""},
+    )
+
+    from app import db
+
+    assert db.execute("SELECT effort_minutes FROM tasks WHERE id = ?",
+                      task_id)[0]["effort_minutes"] is None
+
+
+def test_edit_form_shows_em_fields(logged_in_client):
+    task_id = _add_task(logged_in_client, priority="Important", effort_minutes="120")
+    resp = logged_in_client.get(f"/edit/{task_id}")
+    assert b'name="item_type"' in resp.data
+    assert b'<option value="Important" selected>' in resp.data
+    assert b'<option value="120" selected>' in resp.data
+    assert b"task_type" not in resp.data
+    assert b"cognitive_load" not in resp.data
 
 
 def test_edit_task_invalid_status_rejected(logged_in_client):
@@ -82,9 +126,8 @@ def test_edit_task_invalid_status_rejected(logged_in_client):
         f"/edit/{task_id}",
         data={
             "title": "Task",
-            "task_type": "rfc",
+            "item_type": "Technical",
             "status": "not_a_real_status",
-            "cognitive_load": "3",
         },
     )
     assert resp.status_code == 200

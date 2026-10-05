@@ -189,7 +189,7 @@ def test_migration_is_a_noop_on_a_freshly_bootstrapped_db(tmp_path):
 
 def test_insert_task_logs_created_event_and_sets_last_touched_at():
     user_id = db_module.create_user("carol", "hash")
-    task_id = db_module.insert_task(user_id, "Ship it", "rfc", "", "", 2, None, "")
+    task_id = db_module.insert_task(user_id, "Ship it", "Technical")
 
     task = db_module.get_task(task_id, user_id)[0]
     assert task["last_touched_at"] is not None
@@ -202,11 +202,13 @@ def test_insert_task_logs_created_event_and_sets_last_touched_at():
 
 def test_update_task_logs_touched_event_and_bumps_last_touched_at():
     user_id = db_module.create_user("dave", "hash")
-    task_id = db_module.insert_task(user_id, "Ship it", "rfc", "", "", 2, None, "")
+    task_id = db_module.insert_task(user_id, "Ship it", "Technical")
     original = db_module.get_task(task_id, user_id)[0]["last_touched_at"]
 
-    db_module.update_task(task_id, user_id, "Ship it v2", "rfc", "in_progress",
-                           "", "", 3, None, "")
+    db_module.update_task(task_id, user_id, title="Ship it v2", item_type="Technical",
+                          status="in_progress", priority="Normal", effort_minutes=None,
+                          mode="reactive", blast_radius="", sprint="", due_date=None,
+                          notes="")
 
     events = db_module.db.execute(
         "SELECT * FROM events WHERE item_id = ? AND event_type = 'touched'", task_id
@@ -220,7 +222,7 @@ def test_update_task_logs_touched_event_and_bumps_last_touched_at():
 
 def test_set_status_logs_status_changed_event():
     user_id = db_module.create_user("erin", "hash")
-    task_id = db_module.insert_task(user_id, "Ship it", "rfc", "", "", 2, None, "")
+    task_id = db_module.insert_task(user_id, "Ship it", "Technical")
 
     db_module.set_status(task_id, user_id, "in_progress")
 
@@ -236,7 +238,7 @@ def test_set_status_logs_status_changed_event():
 
 def test_set_status_to_done_also_logs_completed_event():
     user_id = db_module.create_user("frank", "hash")
-    task_id = db_module.insert_task(user_id, "Ship it", "rfc", "", "", 2, None, "")
+    task_id = db_module.insert_task(user_id, "Ship it", "Technical")
 
     db_module.set_status(task_id, user_id, "done")
 
@@ -261,14 +263,14 @@ def test_insert_task_rolls_back_when_event_append_fails(monkeypatch):
     monkeypatch.setattr(db_module, "log_event", _fail_log_event)
 
     with pytest.raises(RuntimeError):
-        db_module.insert_task(user_id, "Ship it", "rfc", "", "", 2, None, "")
+        db_module.insert_task(user_id, "Ship it", "Technical")
 
     assert db_module.tasks_for_user(user_id) == []
 
 
 def test_set_status_rolls_back_when_event_append_fails(monkeypatch):
     user_id = db_module.create_user("hank", "hash")
-    task_id = db_module.insert_task(user_id, "Ship it", "rfc", "", "", 2, None, "")
+    task_id = db_module.insert_task(user_id, "Ship it", "Technical")
     original = db_module.get_task(task_id, user_id)[0]["status"]
     monkeypatch.setattr(db_module, "log_event", _fail_log_event)
 
@@ -283,9 +285,9 @@ def test_writes_still_commit_after_a_rolled_back_transaction(monkeypatch):
     with monkeypatch.context() as m:
         m.setattr(db_module, "log_event", _fail_log_event)
         with pytest.raises(RuntimeError):
-            db_module.insert_task(user_id, "Doomed", "rfc", "", "", 2, None, "")
+            db_module.insert_task(user_id, "Doomed", "Technical")
 
-    task_id = db_module.insert_task(user_id, "Ship it", "rfc", "", "", 2, None, "")
+    task_id = db_module.insert_task(user_id, "Ship it", "Technical")
 
     # Read through a separate connection so an uncommitted write can't pass.
     con = sqlite3.connect(db_module.db._engine.url.database)
@@ -302,8 +304,8 @@ def test_transaction_recovers_after_sql_error_drops_the_connection():
     user_id = db_module.create_user("jack", "hash")
     with pytest.raises(RuntimeError):
         with db_module.transaction():
-            db_module.db.execute("INSERT INTO tasks (user_id, title, task_type) VALUES (?, ?, ?)",
-                                 user_id, "Doomed", "rfc")
+            db_module.db.execute("INSERT INTO tasks (user_id, title, item_type) VALUES (?, ?, ?)",
+                                 user_id, "Doomed", "Technical")
             db_module.db.execute("SELECT * FROM no_such_table")
 
     # cs50 left alone would stay in "inside a transaction" mode here.

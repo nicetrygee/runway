@@ -17,15 +17,12 @@ ai_client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY) if ANTHROPIC_API_KEY 
 
 class ExtractedTask(BaseModel):
     title: str
-    # Mirrors VALID_TASK_TYPES (app.py) — Literal members can't be built from a runtime list.
-    task_type: Literal["incident", "rfc", "1on1", "hiring", "delivery", "other"]
     blast_radius: str
     sprint: str
-    cognitive_load: int
     due_date: str
     notes: str
-    # Mirror VALID_ITEM_TYPES / VALID_PRIORITIES / VALID_STREAMS /
-    # VALID_MODES (app.py). Same Literal-mirrors-a-runtime-list constraint as task_type above.
+    # Mirror VALID_ITEM_TYPES / VALID_PRIORITIES / VALID_STREAMS / VALID_MODES
+    # (app.py) — Literal members can't be built from a runtime list.
     item_type: Literal[
         "People", "Delivery", "Technical", "Stakeholder", "Strategy",
         "Hiring", "Operational", "Personal-admin",
@@ -53,10 +50,9 @@ def extract_task_from_text(text):
             "Extract a task from the user's freeform note for an engineering "
             f"manager's task tracker. Today's date is {today}. Resolve relative "
             "dates (e.g. 'Friday', 'next week') to YYYY-MM-DD; leave due_date as "
-            "an empty string if no date is mentioned. cognitive_load is 1-5, how "
-            "much headspace the task consumes — default to 2 if unclear. Leave "
-            "blast_radius, sprint, and notes as empty strings if not mentioned.\n\n"
-            "Also classify it against the EM's broader taxonomy:\n"
+            "an empty string if no date is mentioned. Leave blast_radius, sprint, "
+            "and notes as empty strings if not mentioned.\n\n"
+            "Also classify it:\n"
             "- item_type: the single best fit among People, Delivery, Technical, "
             "Stakeholder, Strategy, Hiring, Operational, Personal-admin.\n"
             "- priority: Critical, Important, Normal, Delegate, or Ignore — how "
@@ -83,7 +79,7 @@ def extract_task_from_text(text):
 def generate_weekly_summary(tasks):
     """Turn a week's worth of completed tasks into a short prose recap via Claude."""
     task_lines = "\n".join(
-        f"- [{t['task_type']}] {t['title']}"
+        f"- [{t['item_type'] or 'Untyped'}] {t['title']}"
         + (f" — {t['blast_radius']}" if t["blast_radius"] else "")
         for t in tasks
     )

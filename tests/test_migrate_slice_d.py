@@ -1,4 +1,4 @@
-"""Slice D migration: adds the additive `settings` table.
+"""Slice D migration: adds the `settings` table to a db that predates it.
 
 Mirrors tests/test_migration.py's pattern for migrate_slice0.py.
 """
@@ -20,6 +20,8 @@ def bootstrap_schema0_db(path):
         schema_sql = f.read()
     con = sqlite3.connect(path)
     con.executescript(schema_sql)
+    # schema.sql includes settings now; drop it to get a pre-Slice-D db.
+    con.execute("DROP TABLE settings")
     con.execute("INSERT INTO users (id, username, hash) VALUES (1, 'alice', 'x')")
     con.commit()
     con.close()

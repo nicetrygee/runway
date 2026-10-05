@@ -8,7 +8,7 @@ def test_csrf_blocks_post_without_token(logged_in_client):
     flask_app.config["WTF_CSRF_ENABLED"] = True
     try:
         resp = logged_in_client.post(
-            "/add", data={"title": "X", "task_type": "rfc", "cognitive_load": "3"}
+            "/add", data={"title": "X", "item_type": "Technical"}
         )
         assert resp.status_code == 400
     finally:

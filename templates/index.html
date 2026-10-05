@@ -104,7 +104,6 @@
     <div class="stat in-progress"><span>{{ stats.in_progress }}</span> In Progress</div>
     <div class="stat blocked"><span>{{ stats.blocked }}</span> Blocked</div>
     <div class="stat done"><span>{{ stats.done }}</span> Done</div>
-    <div class="stat load"><span>{{ stats.avg_load }}</span> Avg Load</div>
   </div>
 
   {% if not tasks %}
@@ -127,8 +126,8 @@
         {% for task in tasks if task.status == col %}
         <div class="task-card status-{{ task.status }}" data-id="{{ task.id }}">
           <div class="task-header">
-            <span class="badge type-{{ task.task_type }}">{{ task.task_type }}</span>
-            <span class="load-dot load-{{ task.cognitive_load }}" title="Cognitive load {{ task.cognitive_load }}/5">●</span>
+            <span class="badge type-{{ (task.item_type or 'none') | lower }}">{{ task.item_type or 'Untyped' }}</span>
+            <span class="effort" title="Estimated effort">{{ task.effort_minutes | effort_label }}</span>
           </div>
           <h3>{{ task.title }}</h3>
           {% if task.blast_radius %}

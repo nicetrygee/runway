@@ -56,8 +56,8 @@ def test_bottleneck_items_sorts_most_blocking_first():
 
 # --- route-level: `/` dashboard widgets -------------------------------------
 
-def seed_item(user_id, title="Task", task_type="rfc", **overrides):
-    item_id = db_module.insert_task(user_id, title, task_type, "", "", 2, None, "")
+def seed_item(user_id, title="Task", item_type="Technical", **overrides):
+    item_id = db_module.insert_task(user_id, title, item_type)
     if overrides:
         columns = ", ".join(f"{col} = ?" for col in overrides)
         db_module.db.execute(

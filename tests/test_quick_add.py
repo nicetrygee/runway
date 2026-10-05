@@ -30,10 +30,8 @@ def test_quick_add_success_prefills_form(logged_in_client, monkeypatch):
     def fake_extract(text):
         return SimpleNamespace(
             title="Follow up with Sarah on the RFC",
-            task_type="rfc",
             blast_radius="",
             sprint="",
-            cognitive_load=9,  # deliberately out of range, to check clamping
             due_date="2026-08-01",
             notes="",
             item_type="Technical",
@@ -50,7 +48,7 @@ def test_quick_add_success_prefills_form(logged_in_client, monkeypatch):
     )
     assert resp.status_code == 200
     assert b"Follow up with Sarah on the RFC" in resp.data
-    assert b'value="5"' in resp.data  # clamped from 9 to 5
+    assert b'<option value="Technical" selected>' in resp.data
 
 
 def test_quick_add_extraction_failure(logged_in_client, monkeypatch):

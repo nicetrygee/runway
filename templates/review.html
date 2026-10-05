@@ -82,7 +82,7 @@
       <ul class="suggestion-list">
         {% for item in suggestions %}
           <li>
-            <span class="badge type-{{ item.task_type }}">{{ item.item_type or item.task_type }}</span>
+            <span class="badge type-{{ (item.item_type or 'none') | lower }}">{{ item.item_type or 'Untyped' }}</span>
             {{ item.title }}
             <span class="task-meta">{{ item.priority }} · {{ (item.effort_minutes or 0) }}m</span>
           </li>

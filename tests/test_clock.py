@@ -45,7 +45,7 @@ def test_utc_now_matches_sqlite_current_timestamp(monkeypatch):
 
 def test_review_week_bounds_use_utc(logged_in_client, sydney_time):
     uid = _user_id()
-    item_id = db_module.insert_task(uid, "Shipped on Sunday", "rfc", "", "", 2, None, "")
+    item_id = db_module.insert_task(uid, "Shipped on Sunday", "Technical")
     app_module.db.execute(
         "INSERT INTO events (user_id, item_id, event_type, created_at) VALUES (?, ?, ?, ?)",
         uid, item_id, "completed", "2025-06-01 19:00:00",
@@ -57,7 +57,7 @@ def test_review_week_bounds_use_utc(logged_in_client, sydney_time):
 
 def test_now_due_phrases_use_utc_date(logged_in_client, sydney_time):
     uid = _user_id()
-    db_module.insert_task(uid, "Due Sunday", "rfc", "", "", 2, "2025-06-01", "")
+    db_module.insert_task(uid, "Due Sunday", "Technical", due_date="2025-06-01")
 
     resp = logged_in_client.get("/now")
     assert b"due today" in resp.data

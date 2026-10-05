@@ -47,15 +47,16 @@ main { padding: 2rem; max-width: 1200px; margin: 0 auto; }
 
 .task-header { display: flex; justify-content: space-between; align-items: center; }
 .badge { font-size: 0.7rem; padding: 0.2rem 0.5rem; border-radius: 3px; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700; }
-.type-incident { background: #ff406033; color: var(--red); }
-.type-rfc { background: #7c4dff33; color: #b39ddb; }
-.type-1on1 { background: #00e5ff22; color: var(--accent); }
+.type-operational { background: #ff406033; color: var(--red); }
+.type-technical { background: #7c4dff33; color: #b39ddb; }
+.type-people { background: #00e5ff22; color: var(--accent); }
 .type-hiring { background: #00e67622; color: var(--green); }
 .type-delivery { background: #ffc94722; color: var(--yellow); }
-.type-other { background: #ffffff11; color: var(--muted); }
+.type-stakeholder { background: #ff980022; color: #ffb74d; }
+.type-strategy { background: #e040fb22; color: #ea80fc; }
+.type-personal-admin, .type-none { background: #ffffff11; color: var(--muted); }
 
-.load-dot { font-size: 1rem; }
-.load-1 { color: #4caf50; } .load-2 { color: #8bc34a; } .load-3 { color: var(--yellow); } .load-4 { color: #ff9800; } .load-5 { color: var(--red); }
+.effort { font-size: 0.75rem; color: var(--muted); }
 
 .task-card h3 { font-family: var(--font-head); font-size: 1rem; font-weight: 700; }
 .blast { color: var(--red); font-size: 0.8rem; }

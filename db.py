@@ -66,8 +66,13 @@ def create_user(username, password_hash):
 
 
 def tasks_for_user(user_id):
+    """Most important first, then soonest due (undated last)."""
     return db.execute(
-        "SELECT * FROM tasks WHERE user_id = ? ORDER BY cognitive_load DESC, due_date ASC",
+        """SELECT * FROM tasks WHERE user_id = ?
+           ORDER BY CASE priority
+               WHEN 'Critical' THEN 0 WHEN 'Important' THEN 1 WHEN 'Normal' THEN 2
+               WHEN 'Delegate' THEN 3 ELSE 4 END,
+           due_date IS NULL, due_date ASC""",
         user_id
     )
 
@@ -77,17 +82,17 @@ def get_task(task_id, user_id):
                        task_id, user_id)
 
 
-def insert_task(user_id, title, task_type, blast_radius, sprint, cognitive_load,
-                 due_date, notes, *, stream="task", item_type=None, priority="Normal",
-                 effort_minutes=None, mode="reactive", person_id=None):
+def insert_task(user_id, title, item_type, *, priority="Normal", effort_minutes=None,
+                 mode="reactive", stream="task", person_id=None, blast_radius="",
+                 sprint="", due_date=None, notes=""):
     with transaction():
         item_id = db.execute(
-            """INSERT INTO tasks (user_id, title, task_type, blast_radius, sprint,
-               cognitive_load, due_date, notes, stream, item_type, priority,
-               effort_minutes, mode, person_id, last_touched_at)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)""",
-            user_id, title, task_type, blast_radius, sprint, cognitive_load, due_date, notes,
-            stream, item_type, priority, effort_minutes, mode, person_id
+            """INSERT INTO tasks (user_id, title, item_type, priority, effort_minutes,
+               mode, stream, person_id, blast_radius, sprint, due_date, notes,
+               last_touched_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)""",
+            user_id, title, item_type, priority, effort_minutes, mode, stream, person_id,
+            blast_radius, sprint, due_date, notes
         )
         log_event(user_id, item_id, "created", person_id=person_id)
         return item_id
@@ -101,16 +106,17 @@ def get_or_create_person(user_id, name):
     return db.execute("INSERT INTO people (user_id, name) VALUES (?, ?)", user_id, name)
 
 
-def update_task(task_id, user_id, title, task_type, status, blast_radius, sprint,
-                 cognitive_load, due_date, notes):
+def update_task(task_id, user_id, *, title, item_type, status, priority, effort_minutes,
+                 mode, blast_radius, sprint, due_date, notes):
+    """Stream and person change through set_relationship instead."""
     with transaction():
         db.execute(
-            """UPDATE tasks SET title=?, task_type=?, status=?, blast_radius=?,
-               sprint=?, cognitive_load=?, due_date=?, notes=?,
+            """UPDATE tasks SET title=?, item_type=?, status=?, priority=?,
+               effort_minutes=?, mode=?, blast_radius=?, sprint=?, due_date=?, notes=?,
                updated_at=CURRENT_TIMESTAMP, last_touched_at=CURRENT_TIMESTAMP
                WHERE id=? AND user_id=?""",
-            title, task_type, status, blast_radius, sprint, cognitive_load, due_date, notes,
-            task_id, user_id
+            title, item_type, status, priority, effort_minutes, mode, blast_radius,
+            sprint, due_date, notes, task_id, user_id
         )
         log_event(user_id, task_id, "touched")
 

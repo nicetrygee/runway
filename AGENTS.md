@@ -25,7 +25,6 @@ relationships. Never build toward being a Jira/Linear clone.
 ```bash
 python3 -m venv venv && source venv/bin/activate && pip install -r requirements.txt
 sqlite3 runway.db < schema.sql
-python3 migrate_slice_d.py   # adds the settings table (not in schema.sql)
 ```
 
 ```bash
@@ -65,17 +64,16 @@ mypy .            # type check
 pytest tests/ -v
 ```
 
-Tests don't touch `runway.db` — `tests/conftest.py` points `DATABASE_URL` at a temp SQLite file (bootstrapped from `schema.sql` plus the Slice D `settings` table, reset before every test) and sets `SECRET_KEY` itself, so no `.env` is needed. It also calls `limiter.reset()` before every test since `flask_limiter`'s in-memory storage is a module-level singleton shared across the whole test session — without the reset, one test's requests count against another's rate-limit budget. CI (`.github/workflows/ci.yml`) runs ruff, mypy, and the suite on every push/PR to `main`; all three must pass.
+Tests don't touch `runway.db` — `tests/conftest.py` points `DATABASE_URL` at a temp SQLite file (bootstrapped from `schema.sql`, reset before every test) and sets `SECRET_KEY` itself, so no `.env` is needed. It also calls `limiter.reset()` before every test since `flask_limiter`'s in-memory storage is a module-level singleton shared across the whole test session — without the reset, one test's requests count against another's rate-limit budget. CI (`.github/workflows/ci.yml`) runs ruff, mypy, and the suite on every push/PR to `main`; all three must pass.
 
 ## DB
 
 - SQLite via `cs50.SQL`. DB path comes from `DATABASE_URL` env var, defaulting to `sqlite:///runway.db` (gitignored) — tests override this to point at a temp file.
-- On first query, `cs50.SQL` auto-creates the file if it doesn't exist, but tables are only created if `schema.sql` has been executed. Bootstrap a fresh db with `schema.sql`, then `migrate_slice_d.py` for the `settings` table:
+- On first query, `cs50.SQL` auto-creates the file if it doesn't exist, but tables are only created if `schema.sql` has been executed. Bootstrap a fresh db with `schema.sql` alone; it is the complete current schema:
   ```bash
   sqlite3 runway.db < schema.sql
-  python3 migrate_slice_d.py
   ```
-- Upgrading a db created before Slice 0: run `migrate_slice0.py` (additive, idempotent), then `migrate_slice_d.py`.
+- Upgrading an older db: back it up, then run `migrate_slice0.py` (pre-Slice-0 dbs), `migrate_slice_d.py` (dbs without `settings`), and `migrate_retire_legacy_fields.py` (drops `task_type`/`cognitive_load` after backfilling `item_type`/`effort_minutes`), in that order. All three are idempotent, so running the whole chain is always safe. Any new migration must leave the db matching `schema.sql`; `tests/test_migrate_retire_legacy_fields.py` checks the chain against it.
 - Query placeholder style is `?` (not `%s` or `:named`). This is the cs50 library convention.
 - `tasks.user_id` has an explicit index (`idx_tasks_user_id`) since every dashboard query filters on it. If you're bootstrapping against an existing `runway.db` created before this was added, re-run `schema.sql` (the `CREATE INDEX IF NOT EXISTS` is safe to apply to an already-populated table).
 
@@ -96,7 +94,7 @@ Tests don't touch `runway.db` — `tests/conftest.py` points `DATABASE_URL` at a
 - **Frontend JS**: `static/app.js` — a single AJAX status-update via `fetch()` to `/status/<id>`. No framework.
 - **Task status values**: `backlog`, `in_progress`, `blocked`, `done` (enforced by CHECK constraint in SQLite and validated server-side).
 - **Task type values**: `incident`, `rfc`, `1on1`, `hiring`, `delivery`, `other`.
-- **Quick Add (AI)**: `POST /quick-add` (`app.py`) sends freeform text to Claude (`claude-sonnet-5` via the `anthropic` SDK's `messages.parse`, structured output into the `ExtractedTask` Pydantic model — chosen over Opus to keep per-call cost down for this lightweight extraction) and re-renders `templates/add.html` with the extracted fields pre-filled for the user to review before saving — it never inserts a task directly. Optional: requires `ANTHROPIC_API_KEY` in the environment; without it the route flashes an error and falls back to the blank form. `ExtractedTask.task_type` is a hardcoded `Literal` mirroring `VALID_TASK_TYPES` — keep the two in sync. Tests (`tests/test_quick_add.py`) monkeypatch `app.ai_client` and `app.extract_task_from_text` rather than calling the real API.
+- **Quick Add (AI)**: `POST /quick-add` (`app.py`) sends freeform text to Claude (`claude-sonnet-5` via the `anthropic` SDK's `messages.parse`, structured output into the `ExtractedTask` Pydantic model — chosen over Opus to keep per-call cost down for this lightweight extraction) and re-renders `templates/add.html` with the extracted fields pre-filled for the user to review before saving — it never inserts a task directly. Optional: requires `ANTHROPIC_API_KEY` in the environment; without it the route flashes an error and falls back to the blank form. `ExtractedTask`'s `item_type`/`priority`/`stream`/`mode` are hardcoded `Literal`s mirroring the matching `VALID_*` lists — keep them in sync. Tests (`tests/test_quick_add.py`) monkeypatch `app.ai_client` and `app.extract_task_from_text` rather than calling the real API.
 - **Weekly Summary (AI)**: `GET /summary` (`app.py`) queries tasks with `status = 'done'` updated in the last 7 days and renders `templates/summary.html`. The raw completed-task list always renders. On top of that, an AI prose recap (`generate_weekly_summary`, same `messages.parse` + Pydantic pattern as quick-add, model `claude-sonnet-5`, output into `WeeklySummary`) only runs if `WEEKLY_SUMMARY_AI_ENABLED=1` is set — this is a real per-page-view API call, so unlike quick-add it's opt-in even when `ANTHROPIC_API_KEY` is present, not just enabled-if-configured. If the flag is on but the key isn't configured, or the call fails, the route flashes and falls back to the plain list — it never blocks the page. Tests (`tests/test_weekly_summary.py`) monkeypatch `app.ai_client`, `app.generate_weekly_summary`, and `app.WEEKLY_SUMMARY_AI_ENABLED` rather than calling the real API.
 
 ## Conventions
@@ -106,8 +104,8 @@ Tests don't touch `runway.db` — `tests/conftest.py` points `DATABASE_URL` at a
 - Dependabot (`.github/dependabot.yml`) opens weekly PRs for pip, GitHub Actions, and the Docker base image.
 - `requirements.txt` and `requirements-dev.txt` are exact-pinned (`==`). When bumping a dependency, install the new version in `venv`, run the test suite, then update the pin to match — don't hand-edit a version number without testing it.
 - Flash messages use categories `"success"` and `"error"`.
-- `VALID_TASK_TYPES` and `VALID_STATUSES` in `app.py` are the single source of truth for server-side validation (used by `validate_task_form`, `edit`, and `update_status`) — keep them in sync with the CHECK constraints in `schema.sql` when adding new values.
-- Slice 0 added four more `VALID_*` lists in `app.py`, next to the two above, mirroring the new `tasks` columns' CHECK constraints in `schema.sql`. `validate_capture_fields` checks all four on `/add`; `VALID_STREAMS` is also checked by `/items/<id>/relationship`:
+- The `VALID_*` lists in `app.py` are the single source of truth for server-side validation — keep them in sync with the CHECK constraints in `schema.sql` when adding new values. `validate_task_form` (shared by `/add` and `/edit`) checks item type, priority, mode, effort and, on `/edit`, status; `validate_capture_fields` checks stream on `/add`; `/items/<id>/relationship` checks stream; `/status/<id>` checks status. `/add` and `/edit` render the same fields from `templates/_item_fields.html`.
+  - `VALID_STATUSES` — `backlog`, `in_progress`, `blocked`, `done`
   - `VALID_STREAMS` — `task`, `commitment`, `delegation`, `waiting`
   - `VALID_ITEM_TYPES` — `People`, `Delivery`, `Technical`, `Stakeholder`, `Strategy`, `Hiring`, `Operational`, `Personal-admin`
   - `VALID_PRIORITIES` — `Critical`, `Important`, `Normal`, `Delegate`, `Ignore`

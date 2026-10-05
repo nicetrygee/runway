@@ -6,10 +6,9 @@ def add_done_task(client, title="Ship the RFC"):
         "/add",
         data={
             "title": title,
-            "task_type": "rfc",
+            "item_type": "Technical",
             "blast_radius": "",
             "sprint": "",
-            "cognitive_load": "2",
             "due_date": "",
             "notes": "",
         },

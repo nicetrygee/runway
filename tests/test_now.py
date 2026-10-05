@@ -1,5 +1,5 @@
 def _add_task(client, **overrides):
-    data = {"title": "Task", "task_type": "rfc", "cognitive_load": "3"}
+    data = {"title": "Task", "item_type": "Technical"}
     data.update(overrides)
     client.post("/add", data=data)
     from app import db
