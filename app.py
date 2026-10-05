@@ -59,12 +59,11 @@ csrf = CSRFProtect(app)
 # this ever runs as more than one worker (see #3, multi-instance scaling).
 limiter = Limiter(get_remote_address, app=app)
 
-# Kept in sync with the CHECK constraints in schema.sql.
-VALID_TASK_TYPES = ["incident", "rfc", "1on1", "hiring", "delivery", "other"]
-VALID_STATUSES = ["backlog", "in_progress", "blocked", "done"]
+app.add_template_filter(recommend.effort_label, "effort_label")
 
-# EM item model enums. Kept in sync with the CHECK constraints in schema.sql
-# and listed in AGENTS.md.
+# Item enums. Kept in sync with the CHECK constraints in schema.sql and
+# listed in AGENTS.md.
+VALID_STATUSES = ["backlog", "in_progress", "blocked", "done"]
 VALID_STREAMS = ["task", "commitment", "delegation", "waiting"]
 VALID_ITEM_TYPES = [
     "People", "Delivery", "Technical", "Stakeholder", "Strategy",
@@ -79,10 +78,12 @@ WEEKLY_SUMMARY_AI_ENABLED = os.environ.get("WEEKLY_SUMMARY_AI_ENABLED") == "1"
 
 
 def validate_task_form(form, require_status=False):
-    """Validate and coerce task form fields. Returns (data, errors)."""
+    """Validate and coerce the item fields shared by /add and /edit.
+
+    Returns (data, errors).
+    """
     errors = []
     title = form.get("title", "").strip()
-    task_type = form.get("task_type")
     blast_radius = form.get("blast_radius", "").strip()
     sprint = form.get("sprint", "").strip()
     due_date = form.get("due_date") or None
@@ -90,49 +91,14 @@ def validate_task_form(form, require_status=False):
 
     if not title:
         errors.append("Title is required.")
-    if task_type not in VALID_TASK_TYPES:
-        errors.append("Invalid task type.")
 
-    cognitive_load = None
-    try:
-        cognitive_load = int(form.get("cognitive_load", 1))
-        if not 1 <= cognitive_load <= 5:
-            errors.append("Cognitive load must be between 1 and 5.")
-    except (TypeError, ValueError):
-        errors.append("Cognitive load must be a number.")
-
-    status = None
-    if require_status:
-        status = form.get("status")
-        if status not in VALID_STATUSES:
-            errors.append("Invalid status.")
-
-    data = {
-        "title": title, "task_type": task_type, "blast_radius": blast_radius,
-        "sprint": sprint, "cognitive_load": cognitive_load, "due_date": due_date,
-        "notes": notes, "status": status
-    }
-    return data, errors
-
-
-def validate_capture_fields(form):
-    """Validate the EM-taxonomy fields on the capture (/add) form.
-
-    Separate from validate_task_form because /edit doesn't have these fields.
-    """
-    errors = []
-
-    item_type = form.get("item_type") or None
-    if item_type is not None and item_type not in VALID_ITEM_TYPES:
+    item_type = form.get("item_type")
+    if item_type not in VALID_ITEM_TYPES:
         errors.append("Invalid item type.")
 
     priority = form.get("priority") or "Normal"
     if priority not in VALID_PRIORITIES:
         errors.append("Invalid priority.")
-
-    stream = form.get("stream") or "task"
-    if stream not in VALID_STREAMS:
-        errors.append("Invalid stream.")
 
     mode = form.get("mode") or "reactive"
     if mode not in VALID_MODES:
@@ -143,18 +109,39 @@ def validate_capture_fields(form):
     if raw_effort:
         try:
             effort_minutes = int(raw_effort)
-            if effort_minutes not in (5, 30, 60, 120, 240, 480):
+            if effort_minutes not in recommend.EFFORT_LABELS:
                 errors.append("Invalid effort.")
         except (TypeError, ValueError):
             errors.append("Invalid effort.")
 
-    person = form.get("person", "").strip()
+    status = None
+    if require_status:
+        status = form.get("status")
+        if status not in VALID_STATUSES:
+            errors.append("Invalid status.")
 
     data = {
-        "item_type": item_type, "priority": priority, "stream": stream,
-        "mode": mode, "effort_minutes": effort_minutes, "person": person,
+        "title": title, "item_type": item_type, "priority": priority, "mode": mode,
+        "effort_minutes": effort_minutes, "blast_radius": blast_radius, "sprint": sprint,
+        "due_date": due_date, "notes": notes, "status": status,
     }
     return data, errors
+
+
+def validate_capture_fields(form):
+    """Validate the fields only /add has: stream and person.
+
+    /edit changes those through the separate Relationship form.
+    """
+    errors = []
+
+    stream = form.get("stream") or "task"
+    if stream not in VALID_STREAMS:
+        errors.append("Invalid stream.")
+
+    person = form.get("person", "").strip()
+
+    return {"stream": stream, "person": person}, errors
 
 
 # Slice C: relationship aging/escalation. Pure functions (like
@@ -257,7 +244,6 @@ def index():
         "in_progress": sum(1 for t in tasks if t["status"] == "in_progress"),
         "blocked": sum(1 for t in tasks if t["status"] == "blocked"),
         "done": sum(1 for t in tasks if t["status"] == "done"),
-        "avg_load": round(sum(t["cognitive_load"] for t in tasks) / len(tasks), 1) if tasks else 0
     }
     return render_template("index.html", tasks=tasks, stats=stats, **_dashboard_context(uid))
 
@@ -309,11 +295,11 @@ def add():
             person_id = db_module.get_or_create_person(session["user_id"], capture_data["person"])
 
         db_module.insert_task(
-            session["user_id"], data["title"], data["task_type"], data["blast_radius"],
-            data["sprint"], data["cognitive_load"], data["due_date"], data["notes"],
-            stream=capture_data["stream"], item_type=capture_data["item_type"],
-            priority=capture_data["priority"], effort_minutes=capture_data["effort_minutes"],
-            mode=capture_data["mode"], person_id=person_id,
+            session["user_id"], data["title"], data["item_type"],
+            priority=data["priority"], effort_minutes=data["effort_minutes"],
+            mode=data["mode"], stream=capture_data["stream"], person_id=person_id,
+            blast_radius=data["blast_radius"], sprint=data["sprint"],
+            due_date=data["due_date"], notes=data["notes"],
         )
         flash("Task added to Runway.", "success")
         return redirect("/")
@@ -344,10 +330,8 @@ def quick_add():
 
     prefill = {
         "title": extracted.title,
-        "task_type": extracted.task_type,
         "blast_radius": extracted.blast_radius,
         "sprint": extracted.sprint,
-        "cognitive_load": max(1, min(5, extracted.cognitive_load)),
         "due_date": extracted.due_date,
         "notes": extracted.notes,
         "item_type": extracted.item_type,
@@ -609,9 +593,11 @@ def edit(task_id):
             )
 
         db_module.update_task(
-            task_id, session["user_id"], data["title"], data["task_type"], data["status"],
-            data["blast_radius"], data["sprint"], data["cognitive_load"], data["due_date"],
-            data["notes"]
+            task_id, session["user_id"], title=data["title"], item_type=data["item_type"],
+            status=data["status"], priority=data["priority"],
+            effort_minutes=data["effort_minutes"], mode=data["mode"],
+            blast_radius=data["blast_radius"], sprint=data["sprint"],
+            due_date=data["due_date"], notes=data["notes"],
         )
         flash("Task updated.", "success")
         return redirect("/")

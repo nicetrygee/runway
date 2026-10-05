@@ -14,7 +14,7 @@ from app import escalation_for_item, item_age_days
 
 
 def _add_item(client, **overrides):
-    data = {"title": "Item", "task_type": "rfc", "cognitive_load": "3"}
+    data = {"title": "Item", "item_type": "Technical"}
     data.update(overrides)
     client.post("/add", data=data)
     return db_module.db.execute("SELECT id FROM tasks ORDER BY id DESC LIMIT 1")[0]["id"]
@@ -32,8 +32,8 @@ def _touch_at(item_id, timestamp):
 
 def test_items_by_stream_filters_by_stream_and_excludes_others():
     uid = db_module.create_user("carol", "hash")
-    task_item = db_module.insert_task(uid, "Plain task", "rfc", "", "", 2, None, "")
-    waiting_item = db_module.insert_task(uid, "Waiting item", "rfc", "", "", 2, None, "")
+    task_item = db_module.insert_task(uid, "Plain task", "Technical")
+    waiting_item = db_module.insert_task(uid, "Waiting item", "Technical")
     db_module.set_relationship(waiting_item, uid, "waiting", None)
 
     waiting = db_module.items_by_stream(uid, "waiting")
@@ -46,8 +46,8 @@ def test_items_by_stream_filters_by_stream_and_excludes_others():
 def test_items_by_stream_excludes_other_users():
     alice_id = db_module.create_user("alice_iso", "hash")
     bob_id = db_module.create_user("bob_iso", "hash")
-    alice_item = db_module.insert_task(alice_id, "Alice item", "rfc", "", "", 2, None, "")
-    bob_item = db_module.insert_task(bob_id, "Bob item", "rfc", "", "", 2, None, "")
+    alice_item = db_module.insert_task(alice_id, "Alice item", "Technical")
+    bob_item = db_module.insert_task(bob_id, "Bob item", "Technical")
     db_module.set_relationship(alice_item, alice_id, "waiting", None)
     db_module.set_relationship(bob_item, bob_id, "waiting", None)
 
@@ -58,7 +58,7 @@ def test_items_by_stream_excludes_other_users():
 def test_set_relationship_updates_stream_and_person_and_logs_delegated_event():
     uid = db_module.create_user("dave", "hash")
     person_id = db_module.create_person(uid, "Sarah", "PM", "")
-    item = db_module.insert_task(uid, "Hiring analysis", "rfc", "", "", 2, None, "")
+    item = db_module.insert_task(uid, "Hiring analysis", "Technical")
 
     db_module.set_relationship(item, uid, "delegation", person_id)
 
@@ -75,8 +75,8 @@ def test_set_relationship_updates_stream_and_person_and_logs_delegated_event():
 def test_open_items_for_person_excludes_done_items():
     uid = db_module.create_user("erin2", "hash")
     person_id = db_module.create_person(uid, "James", "Eng", "")
-    open_item = db_module.insert_task(uid, "Open item", "rfc", "", "", 2, None, "")
-    done_item = db_module.insert_task(uid, "Done item", "rfc", "", "", 2, None, "")
+    open_item = db_module.insert_task(uid, "Open item", "Technical")
+    done_item = db_module.insert_task(uid, "Done item", "Technical")
     db_module.set_relationship(open_item, uid, "delegation", person_id)
     db_module.set_relationship(done_item, uid, "delegation", person_id)
     db_module.set_status(done_item, uid, "done")
@@ -87,7 +87,7 @@ def test_open_items_for_person_excludes_done_items():
 
 def test_follow_up_logs_event_and_bumps_last_touched_at():
     uid = db_module.create_user("frank2", "hash")
-    item = db_module.insert_task(uid, "Chase Product", "rfc", "", "", 2, None, "")
+    item = db_module.insert_task(uid, "Chase Product", "Technical")
     db_module.set_relationship(item, uid, "waiting", None)
     _touch_at(item, "2020-01-01 00:00:00")
 

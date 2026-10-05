@@ -72,7 +72,7 @@ Runway is built around one item model — `stream` (`task` / `commitment` / `del
 
 ## Data model
 
-- `tasks` — the core item table. `stream` and the EM taxonomy (`item_type`, `priority`, `effort_minutes`, `mode`) sit alongside the original fields (`task_type`, `blast_radius`, `sprint`, `cognitive_load`) kept for continuity; `person_id`, `is_blocking`, and `last_touched_at` drive the relationship and staleness signals.
+- `tasks` — the core item table. `stream` and the EM taxonomy (`item_type`, `priority`, `effort_minutes`, `mode`), plus free-text `blast_radius` and `sprint`; `person_id`, `is_blocking`, and `last_touched_at` drive the relationship and staleness signals.
 - `people` — a lightweight directory (name/role/notes), the join point for commitments, delegation, and waiting-on.
 - `events` — append-only history (`created`, `touched`, `status_changed`, `completed`, `delegated`, `followed_up`, ...). Weekly-review counts and staleness are always derived from this log, never from mutating a row in place.
 - `settings` — per-user key/value store (`available_hours`, `meeting_hours_this_week`) for the capacity read.
@@ -82,7 +82,7 @@ Full column-level detail and the enum lists (`VALID_STREAMS`, `VALID_ITEM_TYPES`
 ## Engineering notes
 
 - **Module split**: `app.py` holds routing, validation, auth, and a few small pure helpers used directly by its own routes (e.g. relationship aging/escalation). `db.py` holds every query (one function per read/write, plus the append-only `log_event`). `classify.py` wraps the Claude extraction calls. `recommend.py` and `capacity.py` are pure functions — no DB, no Flask, no network — so the ranking and aggregation logic is unit-tested directly against plain data, not through the app.
-- **Migrations**: `schema.sql` bootstraps a fresh install; `migrate_slice0.py` and `migrate_slice_d.py` apply the same additive changes to an existing `runway.db`, idempotently.
+- **Migrations**: `schema.sql` is the complete schema and bootstraps a fresh install on its own. `migrate_slice0.py`, `migrate_slice_d.py` and `migrate_retire_legacy_fields.py`, run in that order, bring an older `runway.db` to the same schema, idempotently; a test checks that they do.
 - **Validation**: server-side validation mirrors the `CHECK` constraints in `schema.sql` — bad input gets a flash message, not a stack trace.
 - **Error handling**: a global exception handler logs the full traceback server-side and returns a generic response to the client either way, whether or not `--debug` was left on by accident.
 - **Rate limiting**: `/login` and `/register` are rate-limited per-IP to slow brute-force attempts.
@@ -101,7 +101,7 @@ Deeper technical notes and the full build history live in `AGENTS.md`, `docs/pro
 | `recommend.py` | The pure "what should I do now" ranking engine |
 | `capacity.py` | Pure weekly-review and dashboard aggregations |
 | `events.py` | Read-only event-history helpers |
-| `schema.sql`, `migrate_slice0.py`, `migrate_slice_d.py` | Fresh-install schema and additive migrations for an existing DB |
+| `schema.sql`, `migrate_*.py` | Fresh-install schema, and the upgrade chain for an existing DB |
 | `templates/` | Jinja2 templates for every surface above |
 | `static/` | Dark-themed CSS and a small `fetch()`-based status-update script |
 | `tests/` | pytest suite (mirrors the module split) |
@@ -114,6 +114,6 @@ Deeper technical notes and the full build history live in `AGENTS.md`, `docs/pro
 
 **The recommendation and capacity engines are pure functions.** No DB access, no LLM call — inputs are plain data, output is a ranked list or a computed aggregate. That's what makes the "25 minutes before a meeting shouldn't suggest a 2-hour doc" behavior, and the weekly capacity math, densely unit-testable without spinning up the app.
 
-**Blast radius + cognitive load instead of a single priority flag** (kept from the original design, alongside the newer `priority`/`effort_minutes` fields). Blast radius names who or what is blocked if a task slips; cognitive load (1–5) separates *time-consuming* from *mentally demanding* — a light calendar day can still be a heavy one.
+**Blast radius alongside priority.** Priority says how much an item matters to me; blast radius names who or what is blocked if it slips, which is the context I need when deciding whether to chase or delegate it.
 
 **SQLite + vanilla JS over Postgres + a frontend framework.** This is a single-user local tool, not a service with concurrent writers. `cs50.SQL` keeps queries readable, and a handful of `fetch()` calls are all the interactivity the UI needs — reaching for a framework here would be solving a problem this app doesn't have.

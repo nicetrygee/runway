@@ -18,8 +18,8 @@
       {% for task in tasks %}
       <div class="task-card status-{{ task.status }}">
         <div class="task-header">
-          <span class="badge type-{{ task.task_type }}">{{ task.task_type }}</span>
-          <span class="load-dot load-{{ task.cognitive_load }}" title="Cognitive load {{ task.cognitive_load }}/5">●</span>
+          <span class="badge type-{{ (task.item_type or 'none') | lower }}">{{ task.item_type or 'Untyped' }}</span>
+          <span class="effort" title="Estimated effort">{{ task.effort_minutes | effort_label }}</span>
         </div>
         <h3>{{ task.title }}</h3>
         {% if task.blast_radius %}

@@ -1,0 +1,45 @@
+{# Item fields shared by add.html and edit.html. `task` is the item being
+   edited, the quick-add prefill, or undefined on a blank add form. #}
+<label>Title *
+  <input type="text" name="title" required placeholder="What needs to happen?" value="{{ task.title if task else '' }}">
+</label>
+<label>Type *
+  <select name="item_type" required>
+    {% for t in ['People', 'Delivery', 'Technical', 'Stakeholder', 'Strategy', 'Hiring', 'Operational', 'Personal-admin'] %}
+      <option value="{{ t }}" {% if task and task.item_type == t %}selected{% endif %}>{{ t }}</option>
+    {% endfor %}
+  </select>
+</label>
+<label>Priority
+  <select name="priority">
+    {% for p in ['Critical', 'Important', 'Normal', 'Delegate', 'Ignore'] %}
+      <option value="{{ p }}" {% if (task and task.priority == p) or (not task and p == 'Normal') %}selected{% endif %}>{{ p }}</option>
+    {% endfor %}
+  </select>
+</label>
+<label>Effort
+  <select name="effort_minutes">
+    <option value="" {% if not task or not task.effort_minutes %}selected{% endif %}>Not estimated</option>
+    {% for minutes, label in [(5, '5 minutes'), (30, '30 minutes'), (60, '1 hour'), (120, '2 hours'), (240, 'Half-day'), (480, 'Multi-day')] %}
+      <option value="{{ minutes }}" {% if task and task.effort_minutes == minutes %}selected{% endif %}>{{ label }}</option>
+    {% endfor %}
+  </select>
+</label>
+<label>Mode
+  <select name="mode">
+    <option value="reactive" {% if not task or task.mode != 'proactive' %}selected{% endif %}>Reactive</option>
+    <option value="proactive" {% if task and task.mode == 'proactive' %}selected{% endif %}>Proactive</option>
+  </select>
+</label>
+<label>Blast Radius <small>(who/what is blocked if this slips?)</small>
+  <input type="text" name="blast_radius" placeholder="e.g. Frontend team, Q3 launch" value="{{ task.blast_radius or '' if task else '' }}">
+</label>
+<label>Sprint / Cycle
+  <input type="text" name="sprint" placeholder="e.g. Sprint 24, Q2-W3" value="{{ task.sprint or '' if task else '' }}">
+</label>
+<label>Due Date
+  <input type="date" name="due_date" value="{{ task.due_date or '' if task else '' }}">
+</label>
+<label>Notes
+  <textarea name="notes" rows="3" placeholder="Context, links, decisions...">{{ task.notes or '' if task else '' }}</textarea>
+</label>

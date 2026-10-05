@@ -7,8 +7,9 @@ Usage:
     python migrate_slice0.py                 # uses ./runway.db (or $DATABASE_URL)
     python migrate_slice0.py path/to/x.db
 
-Does NOT drop or rename anything. `task_type` is kept and coexists with the
-new `item_type`; the current UI keeps working until Slice A migrates it.
+Does NOT drop or rename anything. migrate_retire_legacy_fields.py later
+drops `task_type` and `cognitive_load`; the backfills from them below are
+skipped once they're gone, so this stays safe to re-run.
 """
 import os
 import sqlite3
@@ -112,15 +113,17 @@ def main():
         "WHERE last_touched_at IS NULL"
     )
     cur.execute("UPDATE tasks SET item_type = NULL WHERE item_type = ''")
-    for legacy, new in TYPE_MAP.items():
-        cur.execute("UPDATE tasks SET item_type = ? WHERE item_type IS NULL AND task_type = ?",
-                    (new, legacy))
-    for load, mins in LOAD_TO_EFFORT.items():
-        cur.execute(
-            "UPDATE tasks SET effort_minutes = ? "
-            "WHERE effort_minutes IS NULL AND cognitive_load = ?",
-            (mins, load)
-        )
+    if "task_type" in have:
+        for legacy, new in TYPE_MAP.items():
+            cur.execute("UPDATE tasks SET item_type = ? WHERE item_type IS NULL AND task_type = ?",
+                        (new, legacy))
+    if "cognitive_load" in have:
+        for load, mins in LOAD_TO_EFFORT.items():
+            cur.execute(
+                "UPDATE tasks SET effort_minutes = ? "
+                "WHERE effort_minutes IS NULL AND cognitive_load = ?",
+                (mins, load)
+            )
 
     cur.executescript(
         """

@@ -10,10 +10,8 @@ import classify
 def _extracted_task(**overrides):
     fields = dict(
         title="Review the Q4 hiring plan",
-        task_type="hiring",
         blast_radius="",
         sprint="",
-        cognitive_load=2,
         due_date="",
         notes="",
         item_type="Hiring",

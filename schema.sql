@@ -1,5 +1,6 @@
--- Runway schema — fresh installs
--- Existing DBs: run migrate_slice0.py instead; it applies the same changes additively.
+-- Runway schema — the complete current schema, for fresh installs.
+-- Existing DBs: run the migrate_*.py scripts instead (see AGENTS.md); together
+-- they bring an older db to exactly this schema.
 -- Convention: every new enum here is mirrored by a VALID_* list in code and by AGENTS.md.
 
 CREATE TABLE IF NOT EXISTS users (
@@ -9,19 +10,13 @@ CREATE TABLE IF NOT EXISTS users (
 );
 
 -- Kept named `tasks` for continuity; conceptually these are "items".
--- task_type (the original, coarser taxonomy) is still required and shown in
--- the UI; item_type is the EM taxonomy. Both are stored.
 CREATE TABLE IF NOT EXISTS tasks (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
     title TEXT NOT NULL,
-
-    -- original taxonomy
-    task_type TEXT NOT NULL CHECK(task_type IN ('incident','rfc','1on1','hiring','delivery','other')),
     status TEXT NOT NULL DEFAULT 'backlog' CHECK(status IN ('backlog','in_progress','blocked','done')),
     blast_radius TEXT,
     sprint TEXT,
-    cognitive_load INTEGER DEFAULT 1 CHECK(cognitive_load BETWEEN 1 AND 5),
     due_date TEXT,
     notes TEXT,
 
@@ -30,7 +25,9 @@ CREATE TABLE IF NOT EXISTS tasks (
     -- relationship seen from a different side.
     stream TEXT NOT NULL DEFAULT 'task'
         CHECK(stream IN ('task','commitment','delegation','waiting')),
-    -- EM taxonomy; nullable, and displays fall back to task_type when unset.
+    -- EM taxonomy. The app requires it on every write, but the column stays
+    -- nullable: SQLite can't add NOT NULL to an existing column in place, and
+    -- migrated dbs must match this schema.
     item_type TEXT
         CHECK(item_type IS NULL OR item_type IN
             ('People','Delivery','Technical','Stakeholder','Strategy','Hiring','Operational','Personal-admin')),

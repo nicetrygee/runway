@@ -68,19 +68,19 @@ New / changed columns:
 | Column | Values | Purpose |
 |---|---|---|
 | `stream` | `task` \| `commitment` \| `delegation` \| `waiting` | direction of the item (see brief) |
-| `item_type` | People, Delivery, Technical, Stakeholder, Strategy, Hiring, Operational, Personal-admin | EM taxonomy, alongside `task_type` |
+| `item_type` | People, Delivery, Technical, Stakeholder, Strategy, Hiring, Operational, Personal-admin | EM taxonomy (replaces `task_type`) |
 | `priority` | Critical \| Important \| Normal \| Delegate \| Ignore | triage priority |
 | `effort_minutes` | integer (canonical) | from 5m/30m/1h/2h/half-day/multi-day → 5/30/60/120/240/480 |
 | `mode` | `reactive` \| `proactive` | strategic-time protection + weekly balance |
 | `person_id` | FK → people, nullable | counterparty (to-whom / delegated-to / waited-on) |
 | `is_blocking` | integer 0/N | how many people/things this is holding up (bottleneck signal) |
 | `last_touched_at` | timestamp | staleness/neglect + follow-up aging; bumped on every write |
-| `due_date`, `status`, `notes`, `cognitive_load`, `task_type` | (kept) | `status` unchanged; `cognitive_load` an optional second axis |
+| `due_date`, `status`, `notes`, `blast_radius`, `sprint` | (kept) | `status` unchanged |
 
 **Effort mapping** (store minutes, present labels): `5m→5, 30m→30, 1h→60, 2h→120, half-day→240, multi-day→480`. Multi-day just means "won't fit any single window" for time-fit purposes.
 
 **Migration of existing rows** (`migrate_slice0.py`, idempotent):
-- `task_type` → `item_type`: `incident→Operational`, `rfc→Technical`, `1on1→People`, `hiring→Hiring`, `delivery→Delivery`, `other→Operational`. The old column was kept.
+- `task_type` → `item_type`: `incident→Operational`, `rfc→Technical`, `1on1→People`, `hiring→Hiring`, `delivery→Delivery`, `other→Operational`. The old column was kept at first (see below).
 - `status` unchanged.
 - `stream` defaults to `task` for all existing rows.
 - `priority` defaults to `Normal`; `mode` defaults to `reactive`.
@@ -90,7 +90,7 @@ New / changed columns:
 The migration follows the `IF NOT EXISTS` pattern so it's safe to re-run against a populated `runway.db`.
 
 ### Enums
-`VALID_STREAMS`, `VALID_ITEM_TYPES`, `VALID_PRIORITIES`, `VALID_MODES` sit alongside `VALID_TASK_TYPES` / `VALID_STATUSES` in `app.py`, mirrored in `schema.sql` `CHECK` constraints and listed in `AGENTS.md`.
+`VALID_STREAMS`, `VALID_ITEM_TYPES`, `VALID_PRIORITIES`, `VALID_MODES` sit alongside `VALID_STATUSES` in `app.py`, mirrored in `schema.sql` `CHECK` constraints and listed in `AGENTS.md`.
 
 ## Module structure
 
@@ -184,7 +184,7 @@ Then four slices in parallel, each on its own branch and PR, because they touch 
 
 - **`app.py` is not thin.** The modules were split out as planned, but routes, form validation and the small pure helpers its own routes use (relationship aging and escalation) stayed in `app.py`, which is about 690 lines. A further split into blueprints wasn't needed to keep slices from colliding, so it wasn't done.
 - **`log_event` lives in `db.py`; `events.py` is read-only.** This keeps the import graph acyclic (`events → db`, never the reverse). Each task write and its event append run inside `db.transaction()`, so they commit or roll back together (PR #27).
-- **`task_type` was kept, not replaced.** It's still required and shown in the UI, alongside `item_type`. `item_type` is nullable, and displays fall back to `task_type` when it's unset.
+- **The legacy fields lingered, then were retired.** `task_type` and `cognitive_load` stayed alongside `item_type` and `effort_minutes` after the slices shipped: `/add` asked for both and `/edit` could only change the old ones. In Oct 2026 the app moved fully to the new fields and `migrate_retire_legacy_fields.py` backfilled and dropped the old columns. `item_type` is required by the app but stays nullable in the db, because SQLite can't add `NOT NULL` to an existing column in place.
 - **Events cascade on item delete.** `events.item_id` is `ON DELETE CASCADE` and cs50 enables SQLite foreign keys, so deleting a task removes its history. That's a real exception to "append-only, never deleted".
 - **A `settings` table was added in Slice D**, holding per-user `available_hours` and `meeting_hours_this_week`. It was first created only by `migrate_slice_d.py`; it has since been folded into `schema.sql`, with the script kept as the upgrade path for older dbs.
 - **Timestamps are naive UTC** from SQLite's `CURRENT_TIMESTAMP`, and the code gets "now" from `clock.utc_now()` (`clock.py`, added Oct 2026) so comparisons don't drift by the server's UTC offset.

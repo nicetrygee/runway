@@ -7,8 +7,8 @@ def test_insert_task_writes_new_em_fields():
     user_id = db_module.create_user("kate", "hash")
     person_id = db_module.get_or_create_person(user_id, "Sarah")
     task_id = db_module.insert_task(
-        user_id, "Review the Q4 hiring plan", "hiring", "", "", 2, None, "",
-        stream="commitment", item_type="Hiring", priority="Important",
+        user_id, "Review the Q4 hiring plan", "Hiring",
+        stream="commitment", priority="Important",
         effort_minutes=30, mode="reactive", person_id=person_id,
     )
 
@@ -23,13 +23,13 @@ def test_insert_task_writes_new_em_fields():
 
 def test_insert_task_defaults_new_fields_when_omitted():
     user_id = db_module.create_user("liam", "hash")
-    task_id = db_module.insert_task(user_id, "Ship it", "rfc", "", "", 2, None, "")
+    task_id = db_module.insert_task(user_id, "Ship it", "Technical")
 
     task = db_module.get_task(task_id, user_id)[0]
     assert task["stream"] == "task"
     assert task["priority"] == "Normal"
     assert task["mode"] == "reactive"
-    assert task["item_type"] is None
+    assert task["effort_minutes"] is None
     assert task["person_id"] is None
 
 
@@ -37,8 +37,8 @@ def test_add_task_with_person_creates_person_and_links(logged_in_client):
     resp = logged_in_client.post(
         "/add",
         data={
-            "title": "Review the Q4 hiring plan", "task_type": "hiring",
-            "cognitive_load": "2", "item_type": "Hiring", "priority": "Important",
+            "title": "Review the Q4 hiring plan",
+            "item_type": "Hiring", "priority": "Important",
             "effort_minutes": "30", "stream": "task", "mode": "reactive",
             "person": "Sarah",
         },
@@ -61,7 +61,7 @@ def test_add_task_with_person_creates_person_and_links(logged_in_client):
 def test_add_task_without_person_leaves_person_id_null(logged_in_client):
     resp = logged_in_client.post(
         "/add",
-        data={"title": "Solo task", "task_type": "rfc", "cognitive_load": "3"},
+        data={"title": "Solo task", "item_type": "Technical"},
         follow_redirects=True,
     )
     assert resp.status_code == 200
@@ -77,7 +77,7 @@ def test_add_task_without_person_leaves_person_id_null(logged_in_client):
 def test_add_task_invalid_item_type_rejected(logged_in_client):
     resp = logged_in_client.post(
         "/add",
-        data={"title": "X", "task_type": "rfc", "cognitive_load": "3", "item_type": "Bogus"},
+        data={"title": "X", "item_type": "Bogus"},
     )
     assert resp.status_code == 200
     assert b"Invalid item type" in resp.data
@@ -90,7 +90,7 @@ def test_add_task_invalid_item_type_rejected(logged_in_client):
 def test_add_task_invalid_effort_rejected(logged_in_client):
     resp = logged_in_client.post(
         "/add",
-        data={"title": "X", "task_type": "rfc", "cognitive_load": "3", "effort_minutes": "45"},
+        data={"title": "X", "item_type": "Technical", "effort_minutes": "45"},
     )
     assert resp.status_code == 200
     assert b"Invalid effort" in resp.data
@@ -104,8 +104,7 @@ def test_quick_add_prefills_new_em_fields(logged_in_client, monkeypatch):
     def fake_extract(text):
         return SimpleNamespace(
             title="Follow up with Sarah on the RFC",
-            task_type="rfc", blast_radius="", sprint="",
-            cognitive_load=2, due_date="", notes="",
+            blast_radius="", sprint="", due_date="", notes="",
             item_type="Technical", priority="Important",
             effort_minutes=60, stream="waiting", mode="reactive",
             person="Sarah",
