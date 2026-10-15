@@ -60,7 +60,14 @@ Prove the core loop end to end on Quick Add, as thinly as possible: **one live c
                 "stream": "…", "mode": "…", "due_date": "YYYY-MM-DD"},
    "acceptable": {"priority": ["Important", "Normal"]}}
   ```
-- Allowed values are the enums in `AGENTS.md`. `effort_minutes` is one of 5/30/60/120/240/480. Use an empty string for no person or no date.
+- Allowed values (they mirror the `VALID_*` lists in `app.py`, listed here so this session never has to open code):
+  - `item_type`: People, Delivery, Technical, Stakeholder, Strategy, Hiring, Operational, Personal-admin
+  - `priority`: Critical, Important, Normal, Delegate, Ignore
+  - `effort_minutes`: 5, 30, 60, 120, 240, 480
+  - `stream`: task, commitment, delegation, waiting
+  - `mode`: reactive, proactive
+- Use an empty string for no person or no date.
+- Quick Add also returns `blast_radius`, `sprint` and `notes`. Like `title`, they are free text, so they are left out of `expected` and not scored in E0.
 - `acceptable` is optional, and only for judgement fields (priority, mode, item_type) where more than one answer is reasonable.
 - **Fictional people and projects only.** No real names or real work.
 - The cases include at least:
@@ -88,7 +95,7 @@ Prove the core loop end to end on Quick Add, as thinly as possible: **one live c
     - exact match for factual fields (person, due_date, stream)
     - within one step for effort_minutes
     - exact match *or* in `acceptable` for priority, mode and item_type
-    - title is excluded from scoring in E0
+    - title, blast_radius, sprint and notes are free text and excluded from scoring in E0
   - **Report:** writes `evals/reports/<timestamp>-<mode>.md` (gitignored) with per-field accuracy, per-case failures, and total tokens and latency for live runs.
 - Unit tests (pytest) for the scorers and for replay's missing-recording failure.
 
