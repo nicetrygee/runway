@@ -37,6 +37,13 @@ A minimal Docker image (`Dockerfile`, `docker-entrypoint.sh`) bootstraps a fresh
 
 `--debug` is for local dev only — it enables the Werkzeug debugger, which allows remote code execution if the server is ever reachable from an untrusted network. Never run with `--debug` (or `debug=True`) outside local dev.
 
+Evals (LM Studio running for `--live`; `--replay` needs no model):
+
+```bash
+python -m evals quick_add --live    # call the model, write recordings + report
+python -m evals quick_add --replay  # re-score recordings only; fails if any are missing
+```
+
 ## Running reliably in the background (macOS)
 
 `flask run` is fine for active coding, but it dies the moment you close the terminal and won't come back on its own. For "keep this running without me watching it," use Gunicorn (multi-worker, replaces a crashed worker automatically) under launchd (macOS's service manager, restarts the whole process if it dies):
@@ -84,6 +91,7 @@ Tests don't touch `runway.db` — `tests/conftest.py` points `DATABASE_URL` at a
   - `classify.py` — AI extraction: `ExtractedTask`, `WeeklySummary`, `extract_task_from_text` (Quick Add, via `llm.complete`), `PROMPT_VERSION`, `generate_weekly_summary` and the Anthropic `ai_client` it still uses.
   - `llm.py` — the one LLM interface (`complete(messages, *, feature, prompt_version, schema=None, settings=ModelSettings())` → `LLMResult`). Features never call a provider SDK directly. One adapter so far, `LMStudioAdapter` (OpenAI-compatible; `LLM_BASE_URL` / `LLM_MODEL`). Strips `<think>…</think>` before parsing; raises `LLMUnavailable` when the provider can't be reached. See `docs/eval-observability.md`.
   - `tracing.py` — writes one row per `llm.complete` call (success or failure) to `traces.db`, a separate gitignored SQLite file (`TRACES_DB_PATH`). A tracing failure is logged and swallowed, never raised.
+  - `evals/` — the eval runner, its own command (D9), not pytest: `python -m evals quick_add --live` runs every case in `evals/quick_add/cases.jsonl` through the real `extract_task_from_text(note, now=<case today>)` against LM Studio, one at a time, traced as normal, and writes each raw response to `evals/quick_add/recordings.jsonl` (committed). `--replay` re-runs the same feature code with `llm.adapter` swapped for one that serves those recordings — no model call, and its incidental traces go to a throwaway file, not `traces.db`. Recordings are keyed on (model, `llm.ModelSettings()`, `classify.PROMPT_VERSION`, note, today); a case with no matching recording makes replay exit 1 naming the case — it never falls back to live. So bumping the prompt version or `LLM_MODEL` needs a fresh `--live` run. `evals/scoring.py` holds the pure per-field scorers (exact for person/due_date/stream, within one bucket for effort, exact-or-`acceptable` for priority/mode/item_type; free-text fields unscored). Each run writes `evals/reports/<timestamp>-<mode>.md` (gitignored). Cases are written in a separate session from the spec only (no self-grading) — don't edit `cases.jsonl` alongside feature code.
   - `events.py` — read-only history helpers (`timeline_for_item`, `events_between`, `event_counts`, `last_followup_for_item`). Write-side (`log_event`) stays in `db.py` on purpose — keeps the import graph acyclic (`app → db`, `app → classify`, `events → db`, `classify → llm → tracing`, `app`/`classify`/`tracing → clock`; nothing imports `app`).
   - `recommend.py` — the pure recommendation engine (Slice B): candidate filter, hard time-fit filter with a smallest-first fallback, weighted score (priority, due urgency, blocking, staleness, minus a context-switch penalty), and a plain-English reason per item. Weights are constants at the top of the file.
   - `capacity.py` — weekly review + capacity aggregations, plus the dashboard's neglected/bottleneck widgets (Slice D). Pure, like `recommend.py`: no DB access, takes plain rows and returns computed aggregates.
