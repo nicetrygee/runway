@@ -19,7 +19,7 @@ from pydantic import BaseModel
 import tracing
 
 DEFAULT_BASE_URL = "http://localhost:1234/v1"
-DEFAULT_MODEL = "qwen/qwen3-8b"
+DEFAULT_MODEL = "qwen3-8b"
 
 _THINK_RE = re.compile(r"<think>.*?</think>", re.DOTALL | re.IGNORECASE)
 

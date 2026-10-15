@@ -109,8 +109,8 @@ def _fake_openai_client(content='{"city": "Leeds", "count": 3}'):
     response = MagicMock()
     response.choices = [SimpleNamespace(message=SimpleNamespace(content=content))]
     response.usage = SimpleNamespace(prompt_tokens=40, completion_tokens=9)
-    response.model = "qwen/qwen3-8b"
-    response.model_dump.return_value = {"id": "chatcmpl-1", "model": "qwen/qwen3-8b"}
+    response.model = "qwen3-8b"
+    response.model_dump.return_value = {"id": "chatcmpl-1", "model": "qwen3-8b"}
     client = MagicMock()
     client.chat.completions.create.return_value = response
     return client
@@ -118,12 +118,12 @@ def _fake_openai_client(content='{"city": "Leeds", "count": 3}'):
 
 def test_lm_studio_adapter_builds_request_and_normalises_response():
     client = _fake_openai_client()
-    adapter = llm.LMStudioAdapter(client=client, model="qwen/qwen3-8b")
+    adapter = llm.LMStudioAdapter(client=client, model="qwen3-8b")
 
     resp = adapter.send(MESSAGES, Answer, llm.ModelSettings())
 
     _, kwargs = client.chat.completions.create.call_args
-    assert kwargs["model"] == "qwen/qwen3-8b"
+    assert kwargs["model"] == "qwen3-8b"
     assert kwargs["messages"] == MESSAGES
     assert kwargs["temperature"] == 0.0
     assert kwargs["max_tokens"] == 1024
@@ -132,10 +132,10 @@ def test_lm_studio_adapter_builds_request_and_normalises_response():
     assert fmt["json_schema"]["name"] == "Answer"
     assert fmt["json_schema"]["schema"] == Answer.model_json_schema()
     assert resp.raw_request == kwargs
-    assert resp.raw_response == {"id": "chatcmpl-1", "model": "qwen/qwen3-8b"}
+    assert resp.raw_response == {"id": "chatcmpl-1", "model": "qwen3-8b"}
     assert resp.text == '{"city": "Leeds", "count": 3}'
     assert (resp.input_tokens, resp.output_tokens) == (40, 9)
-    assert resp.model == "qwen/qwen3-8b"
+    assert resp.model == "qwen3-8b"
 
 
 def test_lm_studio_adapter_omits_response_format_without_schema():
@@ -174,5 +174,5 @@ def test_lm_studio_adapter_defaults(monkeypatch):
 
     adapter = llm.LMStudioAdapter()
 
-    assert adapter.model == "qwen/qwen3-8b"
+    assert adapter.model == "qwen3-8b"
     assert str(adapter.client.base_url).startswith("http://localhost:1234/v1")
