@@ -12,7 +12,13 @@ os.environ["SECRET_KEY"] = "test-secret-key"
 TEST_DB_FD, TEST_DB_PATH = tempfile.mkstemp(suffix=".db")
 os.environ["DATABASE_URL"] = f"sqlite:///{TEST_DB_PATH}"
 
+# Never write the real traces.db from tests; each test starts with no file.
+TRACES_DIR = tempfile.mkdtemp()
+TRACES_DB_PATH = os.path.join(TRACES_DIR, "traces.db")
+os.environ["TRACES_DB_PATH"] = TRACES_DB_PATH
+
 import app as app_module  # noqa: E402  (must import after env vars are set)
+import llm  # noqa: E402
 
 SCHEMA_PATH = os.path.join(os.path.dirname(__file__), "..", "schema.sql")
 with open(SCHEMA_PATH) as f:
@@ -40,7 +46,51 @@ def reset_db():
     # test session — reset it so one test's requests don't count against
     # another's rate limit budget.
     app_module.limiter.reset()
+    if os.path.exists(TRACES_DB_PATH):
+        os.remove(TRACES_DB_PATH)
     yield
+
+
+class FakeAdapter:
+    """Stands in for the LM Studio adapter: returns canned text, records calls,
+    or raises `error` if set. No network."""
+
+    model = "fake-model"
+
+    def __init__(self, text="", input_tokens=12, output_tokens=8, error=None):
+        self.text = text
+        self.input_tokens = input_tokens
+        self.output_tokens = output_tokens
+        self.error = error
+        self.calls = []
+
+    def send(self, messages, schema, settings):
+        self.calls.append({"messages": messages, "schema": schema, "settings": settings})
+        if self.error is not None:
+            raise self.error
+        return llm.AdapterResponse(
+            raw_request={"model": self.model, "messages": messages},
+            raw_response={"id": "fake-1", "content": self.text},
+            text=self.text,
+            input_tokens=self.input_tokens,
+            output_tokens=self.output_tokens,
+            model=self.model,
+        )
+
+
+@pytest.fixture
+def fake_llm(monkeypatch):
+    fake = FakeAdapter()
+    monkeypatch.setattr(llm, "adapter", fake)
+    return fake
+
+
+def read_traces():
+    conn = sqlite3.connect(TRACES_DB_PATH)
+    conn.row_factory = sqlite3.Row
+    rows = [dict(r) for r in conn.execute("SELECT * FROM traces ORDER BY id")]
+    conn.close()
+    return rows
 
 
 @pytest.fixture

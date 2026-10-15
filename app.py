@@ -21,6 +21,7 @@ import recommend
 from classify import ai_client, extract_task_from_text, generate_weekly_summary
 from db import db  # noqa: F401 -- re-export: tests import the handle as `from app import db`
 from events import events_between
+from llm import LLMUnavailable
 
 load_dotenv()
 
@@ -313,15 +314,16 @@ def quick_add():
     if not text:
         flash("Type something to quick-add.", "error")
         return redirect("/add")
-    if ai_client is None:
-        flash("Quick-add isn't configured — set ANTHROPIC_API_KEY.", "error")
-        return render_template("add.html")
 
     try:
         extracted = extract_task_from_text(text)
-    except anthropic.APIStatusError:
-        app.logger.exception("Quick-add extraction failed (API error)")
-        flash("AI extraction failed — fill in the form below.", "error")
+    except LLMUnavailable:
+        app.logger.exception("Quick-add extraction failed (model unreachable)")
+        flash(
+            "Quick-add couldn't reach the local model (is LM Studio running?) "
+            "— fill in the form below.",
+            "error",
+        )
         return render_template("add.html")
     except Exception:
         app.logger.exception("Quick-add extraction failed")

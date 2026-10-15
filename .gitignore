@@ -7,3 +7,4 @@ flask_session/
 logs/
 venv/
 .DS_Store
+traces.db
