@@ -61,7 +61,8 @@ def test_case_ids_are_unique_and_well_formed():
 def test_case_matches_schema(case):
     keys = set(case)
     assert CASE_KEYS <= keys, f"missing keys: {CASE_KEYS - keys}"
-    assert keys <= CASE_KEYS | OPTIONAL_CASE_KEYS, f"unknown keys: {keys - CASE_KEYS - OPTIONAL_CASE_KEYS}"
+    unknown = keys - CASE_KEYS - OPTIONAL_CASE_KEYS
+    assert not unknown, f"unknown keys: {unknown}"
 
     assert _is_iso_date(case["today"])
     assert isinstance(case["note"], str) and case["note"].strip()
