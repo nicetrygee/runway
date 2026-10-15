@@ -1,7 +1,9 @@
 """AI extraction — freeform text into structured task fields.
 
-Quick-add (AI) is optional — the app runs fine without an API key, the
-feature just flashes an error if used unconfigured (see app.py's quick_add).
+Quick Add goes through `llm.complete` (local model via LM Studio, traced to
+traces.db); if the model is unreachable the route falls back to the blank
+form (see app.py's quick_add). The weekly summary still uses the opt-in
+Anthropic client below until Phase 1a moves it onto the interface.
 """
 import os
 from typing import Literal
@@ -10,6 +12,7 @@ import anthropic
 from pydantic import BaseModel
 
 import clock
+import llm
 
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY")
 ai_client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY) if ANTHROPIC_API_KEY else None
@@ -36,44 +39,57 @@ class ExtractedTask(BaseModel):
     mode: Literal["reactive", "proactive"]
 
 
+# Bump whenever the Quick Add system prompt changes: replay recordings are
+# keyed on it, so a new version needs a fresh live eval run.
+PROMPT_VERSION = "quick_add.v1"
+
+
 class WeeklySummary(BaseModel):
     summary: str
 
 
-def extract_task_from_text(text):
-    """Turn a freeform note into structured task fields via Claude."""
-    today = clock.utc_now().strftime("%Y-%m-%d")
-    response = ai_client.messages.parse(
-        model="claude-sonnet-5",
-        max_tokens=1024,
-        system=(
-            "Extract a task from the user's freeform note for an engineering "
-            f"manager's task tracker. Today's date is {today}. Resolve relative "
-            "dates (e.g. 'Friday', 'next week') to YYYY-MM-DD; leave due_date as "
-            "an empty string if no date is mentioned. Leave blast_radius, sprint, "
-            "and notes as empty strings if not mentioned.\n\n"
-            "Also classify it:\n"
-            "- item_type: the single best fit among People, Delivery, Technical, "
-            "Stakeholder, Strategy, Hiring, Operational, Personal-admin.\n"
-            "- priority: Critical, Important, Normal, Delegate, or Ignore — how "
-            "urgently this deserves attention.\n"
-            "- effort_minutes: how long this will take, mapped to exactly one of "
-            "5 (5m), 30 (30m), 60 (1h), 120 (2h), 240 (half-day), 480 (multi-day) "
-            "— pick the closest bucket.\n"
-            "- person: the name of anyone the note is about or addressed to "
-            "(e.g. who asked, who it's owed to, who it's delegated to), or an "
-            "empty string if no one is named.\n"
-            "- stream: 'commitment' if the note is a promise the user made to "
-            "someone else, 'delegation' if the user is handing this off to "
-            "someone else to do, 'waiting' if the user is blocked pending "
-            "someone or something else, otherwise 'task' (the user's own work).\n"
-            "- mode: 'proactive' for strategic, planned, non-urgent work; "
-            "'reactive' for everything else (the common case)."
-        ),
-        messages=[{"role": "user", "content": text}],
-        output_format=ExtractedTask,
+def extract_task_from_text(text, now=None):
+    """Turn a freeform note into structured task fields via the local model.
+
+    `now` fixes "today" for resolving relative dates (evals pass a fixed one);
+    it defaults to clock.utc_now().
+    """
+    today = (now or clock.utc_now()).strftime("%Y-%m-%d")
+    system = (
+        "/no_think\n"
+        "Extract a task from the user's freeform note for an engineering "
+        f"manager's task tracker. Today's date is {today}. Resolve relative "
+        "dates (e.g. 'Friday', 'next week') to YYYY-MM-DD; leave due_date as "
+        "an empty string if no date is mentioned. Leave blast_radius, sprint, "
+        "and notes as empty strings if not mentioned.\n\n"
+        "Also classify it:\n"
+        "- item_type: the single best fit among People, Delivery, Technical, "
+        "Stakeholder, Strategy, Hiring, Operational, Personal-admin.\n"
+        "- priority: Critical, Important, Normal, Delegate, or Ignore — how "
+        "urgently this deserves attention.\n"
+        "- effort_minutes: how long this will take, mapped to exactly one of "
+        "5 (5m), 30 (30m), 60 (1h), 120 (2h), 240 (half-day), 480 (multi-day) "
+        "— pick the closest bucket.\n"
+        "- person: the name of anyone the note is about or addressed to "
+        "(e.g. who asked, who it's owed to, who it's delegated to), or an "
+        "empty string if no one is named.\n"
+        "- stream: 'commitment' if the note is a promise the user made to "
+        "someone else, 'delegation' if the user is handing this off to "
+        "someone else to do, 'waiting' if the user is blocked pending "
+        "someone or something else, otherwise 'task' (the user's own work).\n"
+        "- mode: 'proactive' for strategic, planned, non-urgent work; "
+        "'reactive' for everything else (the common case)."
     )
-    return response.parsed_output
+    result = llm.complete(
+        [
+            {"role": "system", "content": system},
+            {"role": "user", "content": text},
+        ],
+        schema=ExtractedTask,
+        feature="quick_add",
+        prompt_version=PROMPT_VERSION,
+    )
+    return result.parsed
 
 
 def generate_weekly_summary(tasks):
