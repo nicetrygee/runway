@@ -5,6 +5,7 @@ from conftest import read_traces
 from pydantic import ValidationError
 
 import classify
+import llm
 
 
 def _extracted_task(**overrides):
@@ -106,3 +107,58 @@ def test_extract_task_from_text_is_traced_with_prompt_version(fake_llm):
 def test_extracted_task_rejects_invalid_enum_values(field, bad_value):
     with pytest.raises(ValidationError):
         _extracted_task(**{field: bad_value})
+
+
+def _done_task(title="Ship the RFC", item_type="Technical", blast_radius=""):
+    return {"title": title, "item_type": item_type, "blast_radius": blast_radius}
+
+
+def test_generate_weekly_summary_returns_parsed_summary(fake_llm):
+    fake_llm.text = classify.WeeklySummary(summary="You shipped the RFC.").model_dump_json()
+
+    assert classify.generate_weekly_summary([_done_task()]) == "You shipped the RFC."
+
+
+def test_generate_weekly_summary_sends_task_lines(fake_llm):
+    fake_llm.text = classify.WeeklySummary(summary="ok").model_dump_json()
+
+    classify.generate_weekly_summary(
+        [_done_task(blast_radius="wide"), _done_task("Tidy inbox", item_type=None)]
+    )
+
+    user_message = fake_llm.calls[0]["messages"][1]["content"]
+    assert "- [Technical] Ship the RFC — wide" in user_message
+    assert "- [Untyped] Tidy inbox" in user_message
+
+
+def test_generate_weekly_summary_disables_thinking(fake_llm):
+    fake_llm.text = classify.WeeklySummary(summary="ok").model_dump_json()
+
+    classify.generate_weekly_summary([_done_task()])
+
+    call = fake_llm.calls[0]
+    assert call["messages"][0]["content"].startswith("/no_think")
+    assert call["settings"].thinking is False
+    assert call["schema"] is classify.WeeklySummary
+
+
+def test_generate_weekly_summary_is_traced(fake_llm):
+    fake_llm.text = classify.WeeklySummary(summary="ok").model_dump_json()
+
+    classify.generate_weekly_summary([_done_task()])
+
+    (row,) = read_traces()
+    assert row["feature"] == "weekly_summary"
+    assert row["prompt_version"] == classify.WEEKLY_SUMMARY_PROMPT_VERSION
+    assert row["success"] == 1
+
+
+def test_generate_weekly_summary_unreachable_raises(fake_llm):
+    fake_llm.error = llm.LLMUnavailable("LM Studio is down")
+
+    with pytest.raises(llm.LLMUnavailable):
+        classify.generate_weekly_summary([_done_task()])
+
+    (row,) = read_traces()
+    assert row["feature"] == "weekly_summary"
+    assert row["success"] == 0

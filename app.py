@@ -3,7 +3,6 @@ import os
 from datetime import datetime
 from functools import wraps
 
-import anthropic
 from cachelib.file import FileSystemCache
 from dotenv import load_dotenv
 from flask import Flask, flash, jsonify, redirect, render_template, request, session
@@ -18,7 +17,7 @@ import capacity
 import clock
 import db as db_module
 import recommend
-from classify import ai_client, extract_task_from_text, generate_weekly_summary
+from classify import extract_task_from_text, generate_weekly_summary
 from db import db  # noqa: F401 -- re-export: tests import the handle as `from app import db`
 from events import events_between
 from llm import LLMUnavailable
@@ -73,8 +72,8 @@ VALID_ITEM_TYPES = [
 VALID_PRIORITIES = ["Critical", "Important", "Normal", "Delegate", "Ignore"]
 VALID_MODES = ["reactive", "proactive"]
 
-# Weekly summary (AI) is fully wired but off by default — it's a real Claude
-# call, so it stays inert until someone opts in, even with an API key set.
+# Weekly summary (AI) is fully wired but off by default — it's a local model
+# call that adds seconds to every page view, so it stays inert until opted in.
 WEEKLY_SUMMARY_AI_ENABLED = os.environ.get("WEEKLY_SUMMARY_AI_ENABLED") == "1"
 
 
@@ -357,17 +356,18 @@ def summary():
 
     ai_summary = None
     if WEEKLY_SUMMARY_AI_ENABLED and tasks:
-        if ai_client is None:
-            flash("Weekly AI summary isn't configured — set ANTHROPIC_API_KEY.", "error")
-        else:
-            try:
-                ai_summary = generate_weekly_summary(tasks)
-            except anthropic.APIStatusError:
-                app.logger.exception("Weekly summary generation failed (API error)")
-                flash("AI summary failed — showing the raw list below.", "error")
-            except Exception:
-                app.logger.exception("Weekly summary generation failed")
-                flash("Couldn't generate a summary — showing the raw list below.", "error")
+        try:
+            ai_summary = generate_weekly_summary(tasks)
+        except LLMUnavailable:
+            app.logger.exception("Weekly summary generation failed (model unreachable)")
+            flash(
+                "Weekly AI summary needs the local model (is LM Studio running?) "
+                "— showing the raw list below.",
+                "error",
+            )
+        except Exception:
+            app.logger.exception("Weekly summary generation failed")
+            flash("Couldn't generate a summary — showing the raw list below.", "error")
 
     return render_template("summary.html", tasks=tasks, ai_summary=ai_summary)
 
@@ -550,17 +550,18 @@ def review():
 
     ai_narrative = None
     if WEEKLY_SUMMARY_AI_ENABLED and completed_items:
-        if ai_client is None:
-            flash("Weekly AI summary isn't configured — set ANTHROPIC_API_KEY.", "error")
-        else:
-            try:
-                ai_narrative = generate_weekly_summary(completed_items)
-            except anthropic.APIStatusError:
-                app.logger.exception("Review AI narrative failed (API error)")
-                flash("AI summary failed — showing the numbers below.", "error")
-            except Exception:
-                app.logger.exception("Review AI narrative failed")
-                flash("Couldn't generate a summary — showing the numbers below.", "error")
+        try:
+            ai_narrative = generate_weekly_summary(completed_items)
+        except LLMUnavailable:
+            app.logger.exception("Review AI narrative failed (model unreachable)")
+            flash(
+                "Weekly AI summary needs the local model (is LM Studio running?) "
+                "— showing the numbers below.",
+                "error",
+            )
+        except Exception:
+            app.logger.exception("Review AI narrative failed")
+            flash("Couldn't generate a summary — showing the numbers below.", "error")
 
     return render_template(
         "review.html",

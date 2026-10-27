@@ -36,7 +36,7 @@ python3 -c "import secrets; print(secrets.token_hex(32))"  # paste the output in
 flask --app app:app run --debug
 ```
 
-`ANTHROPIC_API_KEY` is optional — it enables AI-powered quick-add (freeform text → classified item) and the weekly AI recap. The app runs fully without it; those features fall back to manual entry / the raw numbers. See `.env.example` for details. When either AI feature is used, the task text you type is sent to Anthropic's API to be classified/summarized.
+The AI features — quick-add (freeform text → classified item) and the opt-in weekly AI recap (`WEEKLY_SUMMARY_AI_ENABLED=1`) — run on a local model in [LM Studio](https://lmstudio.ai) (`LLM_BASE_URL` / `LLM_MODEL`); no API key is needed and nothing you type leaves your machine. The app runs fully without LM Studio; those features fall back to manual entry / the raw numbers. Every AI call is traced to a local `traces.db`. See `.env.example` for details.
 
 ### Docker
 
@@ -64,7 +64,7 @@ Runway is built around one item model — `stream` (`task` / `commitment` / `del
 
 | Surface | Route | Answers |
 |---|---|---|
-| **Capture** | `/add`, `/quick-add` | Turn a line of freeform text into a classified item — type, priority, effort, person, and stream — via an optional Claude-powered extraction step, or fill it in by hand. |
+| **Capture** | `/add`, `/quick-add` | Turn a line of freeform text into a classified item — type, priority, effort, person, and stream — via an optional local-model extraction step, or fill it in by hand. |
 | **Now** | `/now` | A ranked, time-box-aware list of what to work on next, with a plain-English reason on each ("10m · blocking 3 people"). Excludes anything that doesn't fit the time you have, with a smallest-first fallback if nothing does. |
 | **Relationships** | `/commitments`, `/waiting`, `/delegated`, `/people` | Promises you've made, what you're waiting on, what you've delegated — grouped by person, aged, with a follow-up action on stale or overdue items. |
 | **Review** | `/review` | The Friday ritual: completed/carried-forward/delegated/waiting counts, a time breakdown by type and by reactive-vs-proactive mode, a capacity read against your available hours, delegation suggestions, and a carry-forward reset. |
@@ -81,7 +81,7 @@ Full column-level detail and the enum lists (`VALID_STREAMS`, `VALID_ITEM_TYPES`
 
 ## Engineering notes
 
-- **Module split**: `app.py` holds routing, validation, auth, and a few small pure helpers used directly by its own routes (e.g. relationship aging/escalation). `db.py` holds every query (one function per read/write, plus the append-only `log_event`). `classify.py` wraps the Claude extraction calls. `recommend.py` and `capacity.py` are pure functions — no DB, no Flask, no network — so the ranking and aggregation logic is unit-tested directly against plain data, not through the app.
+- **Module split**: `app.py` holds routing, validation, auth, and a few small pure helpers used directly by its own routes (e.g. relationship aging/escalation). `db.py` holds every query (one function per read/write, plus the append-only `log_event`). `classify.py` holds the AI features (extraction and the weekly recap), which call a local model through the single `llm.py` interface. `recommend.py` and `capacity.py` are pure functions — no DB, no Flask, no network — so the ranking and aggregation logic is unit-tested directly against plain data, not through the app.
 - **Migrations**: `schema.sql` is the complete schema and bootstraps a fresh install on its own. `migrate_slice0.py`, `migrate_slice_d.py` and `migrate_retire_legacy_fields.py`, run in that order, bring an older `runway.db` to the same schema, idempotently; a test checks that they do.
 - **Validation**: server-side validation mirrors the `CHECK` constraints in `schema.sql` — bad input gets a flash message, not a stack trace.
 - **Error handling**: a global exception handler logs the full traceback server-side and returns a generic response to the client either way, whether or not `--debug` was left on by accident.
