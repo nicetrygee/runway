@@ -27,3 +27,20 @@ jobs:
 
       - name: Run tests
         run: pytest tests/ -v
+
+      - name: Eval replay (Quick Add, no model)
+        # Fails only on missing recordings or a crash, never on scores (D24).
+        env:
+          LLM_MODEL: qwen3-8b  # must match the model the recordings were made with
+        run: python -m evals quick_add --replay
+
+      - name: Publish replay scores
+        if: always()
+        run: cat evals/reports/*-replay.md >> "$GITHUB_STEP_SUMMARY" 2>/dev/null || true
+
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: eval-replay-report
+          path: evals/reports/*-replay.md
+          if-no-files-found: ignore
