@@ -63,3 +63,22 @@ def test_quick_add_extraction_failure(logged_in_client, monkeypatch):
     )
     assert resp.status_code == 200
     assert b"Couldn&#39;t parse" in resp.data or b"Couldn't parse" in resp.data
+
+
+def test_quick_add_never_saves_a_task(logged_in_client, monkeypatch):
+    # AGENTS.md AI rule 6: AI output is a proposal; nothing is written until
+    # the user reviews the pre-filled form and saves it themselves.
+    def fake_extract(text):
+        return SimpleNamespace(
+            title="Chase Juno for the Halcyon numbers", blast_radius="", sprint="",
+            due_date="", notes="", item_type="Stakeholder", priority="Normal",
+            effort_minutes=5, stream="waiting", mode="reactive", person="Juno",
+        )
+
+    monkeypatch.setattr(app_module, "extract_task_from_text", fake_extract)
+    resp = logged_in_client.post("/quick-add", data={"text": "chase Juno for numbers"})
+
+    assert resp.status_code == 200
+    assert app_module.db.execute("SELECT id FROM tasks") == []
+    assert app_module.db.execute("SELECT id FROM events") == []
+    assert app_module.db.execute("SELECT id FROM people") == []

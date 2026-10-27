@@ -4,7 +4,9 @@ Quick Add and the weekly summary both go through `llm.complete` (local model
 via LM Studio, traced to traces.db); if the model is unreachable the routes
 fall back to the blank form / plain list (see app.py).
 """
-from typing import Literal
+from collections.abc import Mapping, Sequence
+from datetime import datetime
+from typing import Any, Literal, cast
 
 from pydantic import BaseModel
 
@@ -81,7 +83,7 @@ class WeeklySummary(BaseModel):
     summary: str
 
 
-def extract_task_from_text(text, now=None):
+def extract_task_from_text(text: str, now: datetime | None = None) -> ExtractedTask:
     """Turn a freeform note into structured task fields via the local model.
 
     `now` fixes "today" for resolving relative dates (evals pass a fixed one);
@@ -98,10 +100,10 @@ def extract_task_from_text(text, now=None):
         feature="quick_add",
         prompt_version=PROMPT_VERSION,
     )
-    return result.parsed
+    return cast(ExtractedTask, result.parsed)
 
 
-def generate_weekly_summary(tasks):
+def generate_weekly_summary(tasks: Sequence[Mapping[str, Any]]) -> str:
     """Turn a week's worth of completed tasks into a short prose recap via the local model."""
     task_lines = "\n".join(
         f"- [{t['item_type'] or 'Untyped'}] {t['title']}"
@@ -117,4 +119,4 @@ def generate_weekly_summary(tasks):
         feature="weekly_summary",
         prompt_version=WEEKLY_SUMMARY_PROMPT_VERSION,
     )
-    return result.parsed.summary
+    return cast(WeeklySummary, result.parsed).summary

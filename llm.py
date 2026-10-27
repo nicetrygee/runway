@@ -25,6 +25,9 @@ from pydantic import BaseModel
 
 import tracing
 
+# Chat messages in OpenAI shape: [{"role": ..., "content": ...}, ...].
+Messages = list[dict[str, Any]]
+
 DEFAULT_BASE_URL = "http://localhost:1234/v1"
 DEFAULT_MODEL = "qwen3-8b"
 
@@ -39,7 +42,7 @@ class HostedCallBlocked(LLMUnavailable):
     """The adapter is hosted and RUNWAY_LAB isn't 1, so nothing was sent."""
 
 
-def is_loopback_url(url):
+def is_loopback_url(url: str) -> bool:
     """True if `url`'s host is this machine. Anything unparseable counts as hosted."""
     try:
         host = urlsplit(url).hostname
@@ -55,7 +58,7 @@ def is_loopback_url(url):
         return False
 
 
-def lab_mode():
+def lab_mode() -> bool:
     """RUNWAY_LAB=1 allows hosted calls. Read per call so tests can set it."""
     return os.environ.get("RUNWAY_LAB") == "1"
 
@@ -90,7 +93,7 @@ class LLMResult:
     request_id: str
 
 
-def strip_think(text):
+def strip_think(text: str) -> str:
     """Drop any <think>…</think> reasoning blocks a model emits before its answer."""
     return _THINK_RE.sub("", text).strip()
 
@@ -102,7 +105,7 @@ class LMStudioAdapter:
     its own `client`.
     """
 
-    def __init__(self, client=None, model=None):
+    def __init__(self, client: openai.OpenAI | None = None, model: str | None = None) -> None:
         base_url = os.environ.get("LLM_BASE_URL", DEFAULT_BASE_URL)
         self.model = model or os.environ.get("LLM_MODEL", DEFAULT_MODEL)
         self.hosted: bool = not is_loopback_url(base_url)
@@ -113,7 +116,9 @@ class LMStudioAdapter:
             max_retries=0,  # fail fast when LM Studio isn't running
         )
 
-    def send(self, messages, schema, settings):
+    def send(
+        self, messages: Messages, schema: type[BaseModel] | None, settings: ModelSettings
+    ) -> AdapterResponse:
         request: dict[str, Any] = {
             "model": self.model,
             "messages": messages,
@@ -149,20 +154,22 @@ class _LazyAdapter:
 
     _instance: LMStudioAdapter | None = None
 
-    def _get(self):
+    def _get(self) -> LMStudioAdapter:
         if self._instance is None:
             self._instance = LMStudioAdapter()
         return self._instance
 
     @property
-    def model(self):
+    def model(self) -> str:
         return self._get().model
 
     @property
-    def hosted(self):
+    def hosted(self) -> bool:
         return self._get().hosted
 
-    def send(self, messages, schema, settings):
+    def send(
+        self, messages: Messages, schema: type[BaseModel] | None, settings: ModelSettings
+    ) -> AdapterResponse:
         return self._get().send(messages, schema, settings)
 
 
@@ -170,13 +177,13 @@ adapter: Any = _LazyAdapter()
 
 
 def complete(
-    messages,
+    messages: Messages,
     *,
-    feature,
-    prompt_version,
+    feature: str,
+    prompt_version: str,
     schema: type[BaseModel] | None = None,
     settings: ModelSettings = ModelSettings(),  # noqa: B008 -- frozen, safe to share
-):
+) -> LLMResult:
     """Send `messages` to the configured model and return an LLMResult.
 
     With `schema` (a Pydantic model), the model is constrained to it and the

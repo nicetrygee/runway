@@ -22,7 +22,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from pydantic import ValidationError
+from pydantic import BaseModel, ValidationError
 
 import classify
 import clock
@@ -34,11 +34,13 @@ CASES_PATH = EVALS_DIR / "quick_add" / "cases.jsonl"
 RECORDINGS_PATH = EVALS_DIR / "quick_add" / "recordings.jsonl"
 REPORTS_DIR = EVALS_DIR / "reports"
 
+PathArg = str | Path | None
+
 
 class MissingRecording(Exception):
     """Replay found no recording for one or more cases."""
 
-    def __init__(self, case_ids, model, prompt_version):
+    def __init__(self, case_ids: list[str], model: str, prompt_version: str) -> None:
         self.case_ids = case_ids
         super().__init__(
             f"no recording for {', '.join(case_ids)} "
@@ -68,7 +70,7 @@ class RunResult:
 class RecordingAdapter:
     """Wraps the live adapter and keeps the last raw response it returned."""
 
-    def __init__(self, inner):
+    def __init__(self, inner: Any) -> None:
         self.inner = inner
         self.model = inner.model
         self.hosted = inner.hosted  # stays behind the guard during --live
@@ -76,9 +78,14 @@ class RecordingAdapter:
         self.last_settings: llm.ModelSettings | None = None
         self.last_latency_ms: float | None = None
 
-    def send(self, messages, schema, settings):
+    def send(
+        self,
+        messages: llm.Messages,
+        schema: type[BaseModel] | None,
+        settings: llm.ModelSettings,
+    ) -> llm.AdapterResponse:
         start = time.perf_counter()
-        response = self.inner.send(messages, schema, settings)
+        response: llm.AdapterResponse = self.inner.send(messages, schema, settings)
         self.last_latency_ms = (time.perf_counter() - start) * 1000
         self.last, self.last_settings = response, settings
         return response
@@ -89,11 +96,16 @@ class ReplayAdapter:
 
     hosted = False
 
-    def __init__(self, model):
+    def __init__(self, model: str) -> None:
         self.model = model
         self.recording: dict[str, Any] | None = None
 
-    def send(self, messages, schema, settings):
+    def send(
+        self,
+        messages: llm.Messages,
+        schema: type[BaseModel] | None,
+        settings: llm.ModelSettings,
+    ) -> llm.AdapterResponse:
         rec = self.recording
         assert rec is not None, "ReplayAdapter called with no recording loaded"
         return llm.AdapterResponse(
@@ -106,7 +118,7 @@ class ReplayAdapter:
         )
 
 
-def _read_jsonl(path):
+def _read_jsonl(path: str | Path) -> list[dict[str, Any]]:
     path = Path(path)
     if not path.exists():
         return []
@@ -114,11 +126,11 @@ def _read_jsonl(path):
             if line.strip()]
 
 
-def load_cases(path=None):
+def load_cases(path: str | Path | None = None) -> list[dict[str, Any]]:
     return _read_jsonl(path or CASES_PATH)
 
 
-def recording_key(case, model):
+def recording_key(case: dict[str, Any], model: str) -> dict[str, Any]:
     return {
         "model": model,
         "model_settings": asdict(llm.ModelSettings()),
@@ -128,7 +140,7 @@ def recording_key(case, model):
     }
 
 
-def _run_case(case):
+def _run_case(case: dict[str, Any]) -> CaseResult:
     """Run one case through the real feature. A reply that doesn't parse is a
     scored failure, not a crash; anything else (e.g. LLMUnavailable) propagates."""
     now = datetime.strptime(case["today"], "%Y-%m-%d")
@@ -141,14 +153,17 @@ def _run_case(case):
     return CaseResult(case["id"], scoring.score_case(case, output), output)
 
 
-def run_live(cases_path=None, recordings_path=None, reports_dir=None):
+def run_live(
+    cases_path: PathArg = None, recordings_path: PathArg = None, reports_dir: PathArg = None
+) -> RunResult:
     cases = load_cases(cases_path)
     recordings_path = Path(recordings_path or RECORDINGS_PATH)
     real = llm.adapter
     recorder = RecordingAdapter(real)
     model = recorder.model
     expected_settings = asdict(llm.ModelSettings())
-    results, new_recs = [], []
+    results: list[CaseResult] = []
+    new_recs: list[dict[str, Any]] = []
     llm.adapter = recorder
     try:
         for case in cases:  # one at a time: one model in memory, 16GB budget
@@ -191,7 +206,9 @@ def run_live(cases_path=None, recordings_path=None, reports_dir=None):
     return run
 
 
-def run_replay(cases_path=None, recordings_path=None, reports_dir=None):
+def run_replay(
+    cases_path: PathArg = None, recordings_path: PathArg = None, reports_dir: PathArg = None
+) -> RunResult:
     cases = load_cases(cases_path)
     model = llm.adapter.model
     recordings = _read_jsonl(recordings_path or RECORDINGS_PATH)
@@ -229,7 +246,7 @@ def run_replay(cases_path=None, recordings_path=None, reports_dir=None):
     return run
 
 
-def format_summary(run):
+def format_summary(run: RunResult) -> str:
     n = len(run.cases)
     lines = ["| Field | Accuracy | Correct |", "|---|---|---|"]
     for name, acc in run.summary.items():
@@ -237,7 +254,9 @@ def format_summary(run):
     return "\n".join(lines)
 
 
-def write_report(run, cases, reports_dir=None):
+def write_report(
+    run: RunResult, cases: list[dict[str, Any]], reports_dir: PathArg = None
+) -> Path:
     reports_dir = Path(reports_dir or REPORTS_DIR)
     reports_dir.mkdir(parents=True, exist_ok=True)
     stamp = clock.utc_now().strftime("%Y%m%dT%H%M%SZ")
