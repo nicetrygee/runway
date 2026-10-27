@@ -38,7 +38,7 @@ class ExtractedTask(BaseModel):
 # fails if they drift. To change a prompt or schema: edit it, bump its version,
 # run `python -m prompts lock`, then re-record with `python -m evals quick_add --live`
 # (replay recordings are keyed on the version, not the text).
-PROMPT_VERSION = "quick_add.v1"
+PROMPT_VERSION = "quick_add.v2"
 WEEKLY_SUMMARY_PROMPT_VERSION = "weekly_summary.v1"
 
 # `{today}` is filled in per call (YYYY-MM-DD) with str.format.
