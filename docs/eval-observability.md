@@ -46,6 +46,11 @@ Everything after Phase 2 is optional.
 | D17 | Replay matches on (model, **model settings**, prompt version, input, today). It proves code and scorer changes only; prompt, model or settings changes need a live run. It fails loudly when there's no recording | Decided |
 | D18 | Traces store the common shape plus raw provider request and response, in a separate SQLite file | Decided |
 | D19 | Phases 2–5 each start with their own grilling round before their spec is written | Decided |
+| D20 | Weekly summary runs on the local model through `llm.complete`, still opt-in via `WEEKLY_SUMMARY_AI_ENABLED` | Decided |
+| D21 | `anthropic` is removed from `requirements.txt` until the Phase 1b adapter re-adds it | Decided |
+| D22 | Hosted = any adapter whose endpoint isn't loopback; hosted calls need `RUNWAY_LAB=1`, checked before sending, and blocked calls are traced | Decided |
+| D23 | Prompt version bumps are enforced by `prompts.lock.json` (hash of template + output schema per version) and a test | Decided |
+| D24 | CI replay fails only on missing recordings or a crash, never on scores (until D5) | Decided |
 
 ## Architecture
 
@@ -78,7 +83,7 @@ Every phase ends in a tagged release (`eval-phase-N`), an explain-back note writ
 | Phase | Scope |
 |---|---|
 | **0 Skeleton** | Minimal interface and LM Studio adapter; traces file; about 10 synthetic Quick Add cases; per-field scoring; live and replay commands. See `slice-e0-skeleton.md` |
-| **1a Guard and rules** | Hosted guard and AGENTS.md rules; prompt versioning; linting and types; CI replay; weekly summary through the interface and traced |
+| **1a Guard and rules** | Hosted guard and AGENTS.md rules; prompt versioning; linting and types; CI replay; weekly summary through the interface and traced. See `slice-e1a-guard-rules.md` |
 | **1b Eval depth** | Labelling-guide questionnaire and guide; full eval set (normal, failure, adversarial); synthetic world; repeat-run baseline; dashboard v1 with efficiency metrics; final model choice; Anthropic adapter and first drift report |
 | **2 "What next?"** | Read-only tool-using agent; `recommend.py` stays pure and is called as a tool; the engine's ranking is the correct answer; step tracing and a step cap; failure investigation view |
 | **3 "Process my notes"** | Propose-then-approve writes; limited tools; idempotency; injection set; approve, edit and reject decisions as a production signal |
