@@ -99,8 +99,6 @@ def test_add_task_invalid_effort_rejected(logged_in_client):
 def test_quick_add_prefills_new_em_fields(logged_in_client, monkeypatch):
     import app as app_module
 
-    monkeypatch.setattr(app_module, "ai_client", object())
-
     def fake_extract(text):
         return SimpleNamespace(
             title="Follow up with Sarah on the RFC",
