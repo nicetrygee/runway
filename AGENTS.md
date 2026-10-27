@@ -71,7 +71,7 @@ mypy .            # type check
 pytest tests/ -v
 ```
 
-Tests don't touch `runway.db` — `tests/conftest.py` points `DATABASE_URL` at a temp SQLite file (bootstrapped from `schema.sql`, reset before every test) and sets `SECRET_KEY` itself, so no `.env` is needed. It also calls `limiter.reset()` before every test since `flask_limiter`'s in-memory storage is a module-level singleton shared across the whole test session — without the reset, one test's requests count against another's rate-limit budget. CI (`.github/workflows/ci.yml`) runs ruff, mypy, and the suite on every push/PR to `main`; all three must pass.
+Tests don't touch `runway.db` — `tests/conftest.py` points `DATABASE_URL` at a temp SQLite file (bootstrapped from `schema.sql`, reset before every test) and sets `SECRET_KEY` itself, so no `.env` is needed. It also calls `limiter.reset()` before every test since `flask_limiter`'s in-memory storage is a module-level singleton shared across the whole test session — without the reset, one test's requests count against another's rate-limit budget. CI (`.github/workflows/ci.yml`) runs ruff, mypy, and the suite on every push/PR to `main`, then `python -m evals quick_add --replay` (no model, no secrets; `LLM_MODEL` pinned to the recordings' model); all four must pass. Replay fails only on a missing recording or a crash — usually a prompt version bumped without a `--live` re-record — never on scores (D24). Per-field scores appear in the run's summary and as the `eval-replay-report` artifact.
 
 ## DB
 
