@@ -65,7 +65,7 @@ QUICK_ADD_SYSTEM = (
     "someone else to do, 'waiting' if the user is blocked pending "
     "someone or something else, otherwise 'task' (the user's own work).\n"
     "- mode: 'proactive' for strategic, planned, non-urgent work; "
-    "'reactive' for everything else (the usual case)."
+    "'reactive' for everything else (the common case)."
 )
 
 WEEKLY_SUMMARY_SYSTEM = (
