@@ -35,6 +35,7 @@ class ScriptedAdapter:
     """Answers each note with a canned reply; counts calls; no network."""
 
     model = "fake-model"
+    hosted = False
 
     def __init__(self, replies, error=None):
         self.replies = replies
@@ -273,3 +274,33 @@ def test_cli_requires_exactly_one_mode(cli_paths):
     assert exc.value.code == 2
     with pytest.raises(SystemExit):
         cli.main(["quick_add", "--live", "--replay"])
+
+
+def test_recording_adapter_forwards_hosted():
+    inner = ScriptedAdapter({})
+    assert runner.RecordingAdapter(inner).hosted is False
+    inner.hosted = True
+    assert runner.RecordingAdapter(inner).hosted is True
+
+
+def test_replay_adapter_is_not_hosted():
+    assert runner.ReplayAdapter("m").hosted is False
+
+
+def test_cli_live_hosted_without_lab_flag_exits_1(cli_paths, scripted, capsys):
+    scripted.hosted = True
+
+    assert cli.main(["quick_add", "--live"]) == 1
+
+    assert "RUNWAY_LAB" in capsys.readouterr().err
+    assert scripted.calls == []
+    assert not cli_paths["recordings_path"].exists()
+    assert llm.adapter is scripted
+
+
+def test_cli_live_hosted_with_lab_flag_runs(cli_paths, scripted, monkeypatch):
+    monkeypatch.setenv("RUNWAY_LAB", "1")
+    scripted.hosted = True
+
+    assert cli.main(["quick_add", "--live"]) == 0
+    assert len(scripted.calls) == 2

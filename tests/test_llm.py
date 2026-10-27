@@ -176,3 +176,133 @@ def test_lm_studio_adapter_defaults(monkeypatch):
 
     assert adapter.model == "qwen3-8b"
     assert str(adapter.client.base_url).startswith("http://localhost:1234/v1")
+    assert adapter.hosted is False
+
+
+# --- Hosted guard (D22) ---
+
+@pytest.mark.parametrize("url", [
+    "http://localhost:1234/v1",
+    "http://LOCALHOST:1234/v1",
+    "http://127.0.0.1:1234/v1",
+    "http://127.1.2.3/v1",
+    "http://[::1]:1234/v1",
+])
+def test_is_loopback_url_true(url):
+    assert llm.is_loopback_url(url) is True
+
+
+@pytest.mark.parametrize("url", [
+    "https://example.invalid/v1",
+    "https://api.openai.com/v1",
+    "http://192.168.1.10:1234/v1",
+    "http://0.0.0.0:1234/v1",
+    "http://foo.localhost/v1",
+    "localhost:1234/v1",  # no scheme: no hostname, so fail closed
+    "http://[::1",  # malformed
+])
+def test_is_loopback_url_false(url):
+    assert llm.is_loopback_url(url) is False
+
+
+def test_lm_studio_adapter_is_hosted_for_remote_base_url(monkeypatch):
+    monkeypatch.setenv("LLM_BASE_URL", "https://example.invalid/v1")
+
+    assert llm.LMStudioAdapter().hosted is True
+
+
+def test_lazy_adapter_exposes_hosted(monkeypatch):
+    monkeypatch.setenv("LLM_BASE_URL", "https://example.invalid/v1")
+    assert llm._LazyAdapter().hosted is True
+
+    monkeypatch.delenv("LLM_BASE_URL")
+    assert llm._LazyAdapter().hosted is False
+
+
+def test_hosted_call_without_lab_flag_is_blocked_before_send(fake_llm):
+    fake_llm.hosted = True
+    fake_llm.text = '{"city": "Leeds", "count": 3}'
+
+    with pytest.raises(llm.HostedCallBlocked):
+        llm.complete(MESSAGES, schema=Answer, feature="quick_add", prompt_version="v1")
+
+    assert fake_llm.calls == []
+
+
+def test_hosted_call_blocked_is_an_llm_unavailable(fake_llm):
+    fake_llm.hosted = True
+
+    with pytest.raises(llm.LLMUnavailable):
+        llm.complete(MESSAGES, feature="quick_add", prompt_version="v1")
+
+
+def test_blocked_call_is_traced(fake_llm):
+    fake_llm.hosted = True
+
+    with pytest.raises(llm.HostedCallBlocked):
+        llm.complete(MESSAGES, feature="quick_add", prompt_version="v1")
+
+    (row,) = read_traces()
+    assert row["success"] == 0
+    assert row["hosted"] == 1
+    assert "HostedCallBlocked" in row["error"] and "RUNWAY_LAB" in row["error"]
+    assert row["raw_request"] is None and row["raw_response"] is None
+    assert (row["feature"], row["prompt_version"]) == ("quick_add", "v1")
+    assert row["input"] is not None
+
+
+def test_hosted_call_with_lab_flag_goes_through(fake_llm, monkeypatch):
+    monkeypatch.setenv("RUNWAY_LAB", "1")
+    fake_llm.hosted = True
+    fake_llm.text = '{"city": "Leeds", "count": 3}'
+
+    result = llm.complete(MESSAGES, schema=Answer, feature="quick_add", prompt_version="v1")
+
+    assert result.parsed == Answer(city="Leeds", count=3)
+    assert len(fake_llm.calls) == 1
+    (row,) = read_traces()
+    assert (row["success"], row["hosted"]) == (1, 1)
+
+
+@pytest.mark.parametrize("value", ["0", "true", "", "yes"])
+def test_lab_flag_must_be_exactly_1(fake_llm, monkeypatch, value):
+    monkeypatch.setenv("RUNWAY_LAB", value)
+    fake_llm.hosted = True
+
+    with pytest.raises(llm.HostedCallBlocked):
+        llm.complete(MESSAGES, feature="quick_add", prompt_version="v1")
+
+
+@pytest.mark.parametrize("lab", [None, "1"])
+def test_local_call_ignores_lab_flag(fake_llm, monkeypatch, lab):
+    if lab:
+        monkeypatch.setenv("RUNWAY_LAB", lab)
+    fake_llm.text = "hello"
+
+    llm.complete(MESSAGES, feature="quick_add", prompt_version="v1")
+
+    assert len(fake_llm.calls) == 1
+    (row,) = read_traces()
+    assert (row["success"], row["hosted"]) == (1, 0)
+
+
+def test_real_adapter_with_remote_url_never_touches_the_client(monkeypatch):
+    monkeypatch.setenv("LLM_BASE_URL", "https://example.invalid/v1")
+    client = _fake_openai_client()
+    monkeypatch.setattr(llm, "adapter", llm.LMStudioAdapter(client=client))
+
+    with pytest.raises(llm.HostedCallBlocked):
+        llm.complete(MESSAGES, schema=Answer, feature="quick_add", prompt_version="v1")
+
+    client.chat.completions.create.assert_not_called()
+
+
+def test_real_adapter_with_remote_url_and_lab_flag_sends(monkeypatch):
+    monkeypatch.setenv("LLM_BASE_URL", "https://example.invalid/v1")
+    monkeypatch.setenv("RUNWAY_LAB", "1")
+    client = _fake_openai_client()
+    monkeypatch.setattr(llm, "adapter", llm.LMStudioAdapter(client=client))
+
+    llm.complete(MESSAGES, schema=Answer, feature="quick_add", prompt_version="v1")
+
+    client.chat.completions.create.assert_called_once()

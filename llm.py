@@ -4,14 +4,21 @@ Features call `complete(...)` and never a provider SDK directly. The provider
 lives behind an adapter; Phase 0 has one, LM Studio over its OpenAI-compatible
 API. Every call — success or failure — is traced via `tracing.record`.
 
+Hosted guard (D22): every adapter declares `hosted`. A call to a hosted
+adapter — for LM Studio, any LLM_BASE_URL whose host isn't loopback — is
+refused before anything is sent unless RUNWAY_LAB=1, and the refusal is
+traced. Lab data must be synthetic (D6).
+
 Tests swap the provider with `monkeypatch.setattr(llm, "adapter", fake)`.
 """
+import ipaddress
 import os
 import re
 import time
 import uuid
 from dataclasses import asdict, dataclass
 from typing import Any
+from urllib.parse import urlsplit
 
 import openai
 from pydantic import BaseModel
@@ -26,6 +33,31 @@ _THINK_RE = re.compile(r"<think>.*?</think>", re.DOTALL | re.IGNORECASE)
 
 class LLMUnavailable(Exception):
     """The provider couldn't be reached (not running, connection refused, timeout)."""
+
+
+class HostedCallBlocked(LLMUnavailable):
+    """The adapter is hosted and RUNWAY_LAB isn't 1, so nothing was sent."""
+
+
+def is_loopback_url(url):
+    """True if `url`'s host is this machine. Anything unparseable counts as hosted."""
+    try:
+        host = urlsplit(url).hostname
+    except ValueError:
+        return False
+    if host is None:
+        return False
+    if host == "localhost":
+        return True
+    try:
+        return ipaddress.ip_address(host).is_loopback
+    except ValueError:
+        return False
+
+
+def lab_mode():
+    """RUNWAY_LAB=1 allows hosted calls. Read per call so tests can set it."""
+    return os.environ.get("RUNWAY_LAB") == "1"
 
 
 @dataclass(frozen=True)
@@ -64,12 +96,18 @@ def strip_think(text):
 
 
 class LMStudioAdapter:
-    """LM Studio via its OpenAI-compatible API. Config from LLM_BASE_URL / LLM_MODEL."""
+    """LM Studio via its OpenAI-compatible API. Config from LLM_BASE_URL / LLM_MODEL.
+
+    `hosted` comes from the configured LLM_BASE_URL, even when a test injects
+    its own `client`.
+    """
 
     def __init__(self, client=None, model=None):
+        base_url = os.environ.get("LLM_BASE_URL", DEFAULT_BASE_URL)
         self.model = model or os.environ.get("LLM_MODEL", DEFAULT_MODEL)
+        self.hosted: bool = not is_loopback_url(base_url)
         self.client = client or openai.OpenAI(
-            base_url=os.environ.get("LLM_BASE_URL", DEFAULT_BASE_URL),
+            base_url=base_url,
             api_key="lm-studio",  # LM Studio ignores it, but the SDK requires one
             timeout=60,
             max_retries=0,  # fail fast when LM Studio isn't running
@@ -120,6 +158,10 @@ class _LazyAdapter:
     def model(self):
         return self._get().model
 
+    @property
+    def hosted(self):
+        return self._get().hosted
+
     def send(self, messages, schema, settings):
         return self._get().send(messages, schema, settings)
 
@@ -139,10 +181,12 @@ def complete(
 
     With `schema` (a Pydantic model), the model is constrained to it and the
     reply is parsed into `result.parsed`; a reply that doesn't validate raises
-    pydantic.ValidationError. Provider unreachable raises LLMUnavailable.
+    pydantic.ValidationError. Provider unreachable raises LLMUnavailable; a
+    hosted adapter without RUNWAY_LAB=1 raises HostedCallBlocked before sending.
     Either way the call is traced before the error propagates.
     """
     request_id = str(uuid.uuid4())
+    hosted = bool(adapter.hosted)
     trace: dict[str, Any] = dict(
         request_id=request_id,
         feature=feature,
@@ -157,9 +201,15 @@ def complete(
         output_tokens=None,
         latency_ms=None,
         success=False,
+        hosted=hosted,
     )
     start = time.perf_counter()
     try:
+        if hosted and not lab_mode():
+            raise HostedCallBlocked(
+                f"Hosted LLM call blocked ({feature}, model {trace['model']}): "
+                "set RUNWAY_LAB=1 to allow; lab data must be synthetic"
+            )
         resp = adapter.send(messages, schema, settings)
         latency_ms = (time.perf_counter() - start) * 1000
         trace.update(

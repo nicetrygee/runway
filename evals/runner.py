@@ -71,6 +71,7 @@ class RecordingAdapter:
     def __init__(self, inner):
         self.inner = inner
         self.model = inner.model
+        self.hosted = inner.hosted  # stays behind the guard during --live
         self.last: llm.AdapterResponse | None = None
         self.last_settings: llm.ModelSettings | None = None
         self.last_latency_ms: float | None = None
@@ -85,6 +86,8 @@ class RecordingAdapter:
 
 class ReplayAdapter:
     """Serves one recorded response at a time. No network."""
+
+    hosted = False
 
     def __init__(self, model):
         self.model = model
