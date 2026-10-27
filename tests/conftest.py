@@ -32,6 +32,13 @@ app_module.app.config["WTF_CSRF_ENABLED"] = False
 
 
 @pytest.fixture(autouse=True)
+def no_lab_mode(monkeypatch):
+    # app.py's load_dotenv() can pull RUNWAY_LAB in from a local .env; the
+    # hosted-guard tests assume it starts unset.
+    monkeypatch.delenv("RUNWAY_LAB", raising=False)
+
+
+@pytest.fixture(autouse=True)
 def reset_db():
     conn = sqlite3.connect(TEST_DB_PATH)
     conn.executescript(
@@ -56,6 +63,7 @@ class FakeAdapter:
     or raises `error` if set. No network."""
 
     model = "fake-model"
+    hosted = False
 
     def __init__(self, text="", input_tokens=12, output_tokens=8, error=None):
         self.text = text

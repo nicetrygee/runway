@@ -1,8 +1,9 @@
 import json
 import os
+import sqlite3
 
 import pytest
-from conftest import read_traces
+from conftest import TRACES_DB_PATH, read_traces
 from pydantic import BaseModel
 
 import llm
@@ -27,7 +28,7 @@ def test_successful_call_writes_one_fully_populated_row(fake_llm):
         "request_id", "created_at", "feature", "model", "model_settings",
         "prompt_version", "input", "output", "raw_request", "raw_response",
         "input_tokens", "output_tokens", "latency_ms", "tokens_per_second",
-        "success",
+        "success", "hosted",
     }
     for column in expected_columns:
         assert row[column] is not None, column
@@ -44,6 +45,7 @@ def test_successful_call_writes_one_fully_populated_row(fake_llm):
     assert json.loads(row["raw_response"])["content"] == '<think>x</think>{"city": "Leeds"}'
     assert (row["input_tokens"], row["output_tokens"]) == (12, 8)
     assert row["success"] == 1
+    assert row["hosted"] == 0
     assert row["error"] is None
 
 
@@ -95,3 +97,56 @@ def test_tracing_failure_does_not_break_the_call(fake_llm, monkeypatch, tmp_path
     result = llm.complete(MESSAGES, feature="f", prompt_version="v")
 
     assert result.text == "still works"
+
+
+# The traces table as it was before the hosted column (Phase 0).
+PHASE_0_SCHEMA = """
+CREATE TABLE traces (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    request_id TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    feature TEXT NOT NULL,
+    model TEXT,
+    model_settings TEXT,
+    prompt_version TEXT,
+    input TEXT,
+    output TEXT,
+    raw_request TEXT,
+    raw_response TEXT,
+    input_tokens INTEGER,
+    output_tokens INTEGER,
+    latency_ms REAL,
+    tokens_per_second REAL,
+    success INTEGER NOT NULL,
+    error TEXT
+)
+"""
+
+
+def test_old_traces_db_gains_hosted_column(fake_llm, caplog):
+    conn = sqlite3.connect(TRACES_DB_PATH)
+    conn.execute(PHASE_0_SCHEMA)
+    conn.execute(
+        "INSERT INTO traces (request_id, created_at, feature, success) "
+        "VALUES ('old', '2026-10-15 00:00:00', 'quick_add', 1)"
+    )
+    conn.commit()
+    conn.close()
+    fake_llm.text = "hello"
+
+    llm.complete(MESSAGES, feature="quick_add", prompt_version="quick_add.v1")
+
+    old, new = read_traces()
+    assert old["hosted"] is None
+    assert new["hosted"] == 0
+    assert "Failed to write trace" not in caplog.text
+
+
+def test_hosted_column_migration_is_idempotent(tmp_path):
+    conn = sqlite3.connect(tmp_path / "traces.db")
+    conn.execute(PHASE_0_SCHEMA)
+    tracing._ensure_schema(conn)
+    tracing._ensure_schema(conn)
+    columns = [r[1] for r in conn.execute("PRAGMA table_info(traces)")]
+    conn.close()
+    assert columns.count("hosted") == 1

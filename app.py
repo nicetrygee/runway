@@ -20,7 +20,7 @@ import recommend
 from classify import extract_task_from_text, generate_weekly_summary
 from db import db  # noqa: F401 -- re-export: tests import the handle as `from app import db`
 from events import events_between
-from llm import LLMUnavailable
+from llm import LLMUnavailable, lab_mode
 
 load_dotenv()
 
@@ -58,6 +58,17 @@ csrf = CSRFProtect(app)
 # In-memory storage is fine for a single-process app; move to Redis if
 # this ever runs as more than one worker (see #3, multi-instance scaling).
 limiter = Limiter(get_remote_address, app=app)
+
+
+def warn_if_lab_mode():
+    if lab_mode():
+        app.logger.warning(
+            "RUNWAY_LAB=1: hosted LLM calls are allowed. "
+            "All data in this environment must be synthetic."
+        )
+
+
+warn_if_lab_mode()
 
 app.add_template_filter(recommend.effort_label, "effort_label")
 

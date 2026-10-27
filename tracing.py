@@ -36,9 +36,23 @@ CREATE TABLE IF NOT EXISTS traces (
     latency_ms REAL,
     tokens_per_second REAL,
     success INTEGER NOT NULL,
-    error TEXT
+    error TEXT,
+    hosted INTEGER
 )
 """
+
+
+def _ensure_schema(conn):
+    """Create the table, and add columns that older traces.db files lack.
+    `hosted` stays NULL ("unknown") on rows written before the guard."""
+    conn.execute(SCHEMA)
+    columns = {row[1] for row in conn.execute("PRAGMA table_info(traces)")}
+    if "hosted" not in columns:
+        try:
+            conn.execute("ALTER TABLE traces ADD COLUMN hosted INTEGER")
+        except sqlite3.OperationalError as e:  # another process got there first
+            if "duplicate column" not in str(e):
+                raise
 
 
 def traces_db_path():
@@ -70,6 +84,7 @@ def record(
     output_tokens,
     latency_ms,
     success,
+    hosted,
     error=None,
 ):
     """Write one trace row. `input`, `model_settings`, `raw_request` and
@@ -92,17 +107,18 @@ def record(
         tokens_per_second(output_tokens, latency_ms),
         1 if success else 0,
         error,
+        1 if hosted else 0,
     )
     try:
         conn = sqlite3.connect(traces_db_path())
         try:
-            conn.execute(SCHEMA)
+            _ensure_schema(conn)
             conn.execute(
                 "INSERT INTO traces (request_id, created_at, feature, model, "
                 "model_settings, prompt_version, input, output, raw_request, "
                 "raw_response, input_tokens, output_tokens, latency_ms, "
-                "tokens_per_second, success, error) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                "tokens_per_second, success, error, hosted) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 row,
             )
             conn.commit()
