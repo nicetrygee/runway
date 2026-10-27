@@ -21,7 +21,7 @@ says *review only* when nothing automated can. Background:
 3. **A prompt or schema change bumps its version**, then
    `python -m prompts lock`, then `python -m evals quick_add --live` to
    re-record. → `tests/test_prompts.py` (fails on drift, with the fix);
-   CI replay will fail on missing recordings once E1a.5 lands.
+   CI replay fails on missing recordings.
 4. **Hosted calls need `RUNWAY_LAB=1`.** → the guard in `llm.complete`
    (`tests/test_llm.py`). **Lab data is synthetic** → *review only*.
 5. **No self-grading.** Eval cases are written in a separate session from the
