@@ -8,7 +8,7 @@ import llm
 from evals import runner
 
 
-def main(argv=None):
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="python -m evals")
     parser.add_argument("feature", choices=["quick_add"])
     mode = parser.add_mutually_exclusive_group(required=True)

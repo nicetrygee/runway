@@ -57,7 +57,8 @@ def load_lock(path: Path | None = None) -> dict[str, str]:
     path = path or LOCK_PATH
     if not path.exists():
         return {}
-    return json.loads(path.read_text())
+    entries: dict[str, str] = json.loads(path.read_text())
+    return entries
 
 
 def check(lock: dict[str, str], registry: dict[str, Prompt] | None = None) -> list[str]:

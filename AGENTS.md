@@ -7,6 +7,38 @@ It is a personal cognition aid, NOT a team task tracker. When in doubt,
 reduce the EM's mental overhead — derive attention from state + time +
 relationships. Never build toward being a Jira/Linear clone.
 
+## AI features — rules
+Every AI feature follows these. Each rule names the check that enforces it, or
+says *review only* when nothing automated can. Background:
+`docs/eval-observability.md`.
+
+1. **Every AI call goes through `llm.complete`.** Features never import a
+   provider SDK. → ruff `TID251` (`pyproject.toml`: `openai`/`anthropic` banned
+   outside `llm.py`), proven live by `tests/test_rules.py`.
+2. **Every AI call is traced**, including failures and blocked calls.
+   → `tests/test_tracing.py` (success, failure, one row per call),
+   `tests/test_llm.py` (blocked hosted calls).
+3. **A prompt or schema change bumps its version**, then
+   `python -m prompts lock`, then `python -m evals quick_add --live` to
+   re-record. → `tests/test_prompts.py` (fails on drift, with the fix);
+   CI replay will fail on missing recordings once E1a.5 lands.
+4. **Hosted calls need `RUNWAY_LAB=1`.** → the guard in `llm.complete`
+   (`tests/test_llm.py`). **Lab data is synthetic** → *review only*.
+5. **No self-grading.** Eval cases are written in a separate session from the
+   feature, from the spec only, and the owner approves every expected answer.
+   Never edit `cases.jsonl` in a PR that touches feature or prompt code.
+   → *review only*.
+6. **AI output is a proposal; a human approves before any write.**
+   → `tests/test_quick_add.py::test_quick_add_never_saves_a_task` for today's
+   features; *review only* for new ones until Phase 3 adds approval tests.
+7. **Replay never falls back to a live call.** → `tests/test_eval_runner.py`
+   (missing-recording tests).
+8. **Cases are data PRs, separate from code.** Re-recordings for a version
+   bump are the exception: they ride along in the bump's PR as a separate
+   commit, since they're machine output, not judgement. → *review only*.
+9. **AI modules are fully typed** (`llm`, `tracing`, `prompts`, `classify`,
+   `evals.*`). → the mypy override in `pyproject.toml`.
+
 ## Model
 - One item table — named `tasks` for continuity, conceptually "items" — with a
   `stream` (task | commitment | delegation | waiting) and an optional
@@ -92,7 +124,7 @@ Tests don't touch `runway.db` — `tests/conftest.py` points `DATABASE_URL` at a
   - `prompts.py` — prompt versioning (D23). `REGISTRY` maps each feature to its version, template and output schema; `prompts.lock.json` (committed) pins every version, old ones included, to a sha256 of template + schema. `tests/test_prompts.py` fails if a prompt or schema changes without a version bump, with the fix in the message. **To change a prompt or schema:** edit it → bump its version → `python -m prompts lock` → `python -m evals quick_add --live` to re-record (Quick Add only; the summary has no evals). `lock` refuses to change the hash of an already-locked version. Not hashed: how the user message is built (e.g. the summary's task-line format) — that's code, covered by its own tests.
   - `llm.py` — the one LLM interface (`complete(messages, *, feature, prompt_version, schema=None, settings=ModelSettings())` → `LLMResult`). Features never call a provider SDK directly. One adapter so far, `LMStudioAdapter` (OpenAI-compatible; `LLM_BASE_URL` / `LLM_MODEL`). Strips `<think>…</think>` before parsing; raises `LLMUnavailable` when the provider can't be reached. **Hosted guard (D22):** every adapter declares `hosted: bool` (`LMStudioAdapter` is hosted when the `LLM_BASE_URL` host isn't loopback; test and replay fakes say `hosted = False`, and there's deliberately no default). `complete()` raises `HostedCallBlocked` (a subclass of `LLMUnavailable`, so existing fallbacks catch it) *before* sending unless `RUNWAY_LAB=1`, and the block is traced. `app.py` logs a WARNING at startup when lab mode is on. See `docs/eval-observability.md`.
   - `tracing.py` — writes one row per `llm.complete` call (success or failure) to `traces.db`, a separate gitignored SQLite file (`TRACES_DB_PATH`). Each row records `hosted` (0/1; NULL on rows from before the guard — older files gain the column in place). A tracing failure is logged and swallowed, never raised.
-  - `evals/` — the eval runner, its own command (D9), not pytest: `python -m evals quick_add --live` runs every case in `evals/quick_add/cases.jsonl` through the real `extract_task_from_text(note, now=<case today>)` against LM Studio, one at a time, traced as normal, and writes each raw response to `evals/quick_add/recordings.jsonl` (committed). `--replay` re-runs the same feature code with `llm.adapter` swapped for one that serves those recordings — no model call, and its incidental traces go to a throwaway file, not `traces.db`. Recordings are keyed on (model, `llm.ModelSettings()`, `classify.PROMPT_VERSION`, note, today); a case with no matching recording makes replay exit 1 naming the case — it never falls back to live. So bumping the prompt version or `LLM_MODEL` needs a fresh `--live` run. `--live` stays behind the hosted guard (the recording wrapper forwards the real adapter's `hosted`); a blocked call exits 1. `evals/scoring.py` holds the pure per-field scorers (exact for person/due_date/stream, within one bucket for effort, exact-or-`acceptable` for priority/mode/item_type; free-text fields unscored). Each run writes `evals/reports/<timestamp>-<mode>.md` (gitignored). Cases are written in a separate session from the spec only (no self-grading) — don't edit `cases.jsonl` alongside feature code.
+  - `evals/` — the eval runner, its own command (D9), not pytest: `python -m evals quick_add --live` runs every case in `evals/quick_add/cases.jsonl` through the real `extract_task_from_text(note, now=<case today>)` against LM Studio, one at a time, traced as normal, and writes each raw response to `evals/quick_add/recordings.jsonl` (committed). `--replay` re-runs the same feature code with `llm.adapter` swapped for one that serves those recordings — no model call, and its incidental traces go to a throwaway file, not `traces.db`. Recordings are keyed on (model, `llm.ModelSettings()`, `classify.PROMPT_VERSION`, note, today); a case with no matching recording makes replay exit 1 naming the case — it never falls back to live. So bumping the prompt version or `LLM_MODEL` needs a fresh `--live` run. `--live` stays behind the hosted guard (the recording wrapper forwards the real adapter's `hosted`); a blocked call exits 1. `evals/scoring.py` holds the pure per-field scorers (exact for person/due_date/stream, within one bucket for effort, exact-or-`acceptable` for priority/mode/item_type; free-text fields unscored). Each run writes `evals/reports/<timestamp>-<mode>.md` (gitignored). Cases follow AI rule 5 (no self-grading).
   - `events.py` — read-only history helpers (`timeline_for_item`, `events_between`, `event_counts`, `last_followup_for_item`). Write-side (`log_event`) stays in `db.py` on purpose — keeps the import graph acyclic (`app → db`, `app → classify`, `events → db`, `classify → llm → tracing`, `prompts → classify`, `app`/`classify`/`tracing → clock`; nothing imports `app`).
   - `recommend.py` — the pure recommendation engine (Slice B): candidate filter, hard time-fit filter with a smallest-first fallback, weighted score (priority, due urgency, blocking, staleness, minus a context-switch penalty), and a plain-English reason per item. Weights are constants at the top of the file.
   - `capacity.py` — weekly review + capacity aggregations, plus the dashboard's neglected/bottleneck widgets (Slice D). Pure, like `recommend.py`: no DB access, takes plain rows and returns computed aggregates.
@@ -110,7 +142,7 @@ Tests don't touch `runway.db` — `tests/conftest.py` points `DATABASE_URL` at a
 
 ## Conventions
 
-- Lint and type checks are configured in `pyproject.toml`: ruff (`E`, `F`, `W`, `I`, `B`, line length 100; `flask_session` pinned as third-party so import order doesn't depend on whether the app has been run locally) and mypy. Both are CI gates — run them before pushing. No auto-formatter is configured.
+- Lint and type checks are configured in `pyproject.toml`: ruff (`E`, `F`, `W`, `I`, `B`, plus `TID` for the provider-SDK import ban (AI rule 1), line length 100; `flask_session` pinned as third-party so import order doesn't depend on whether the app has been run locally) and mypy (lenient repo-wide; `disallow_untyped_defs`, `disallow_incomplete_defs` and `warn_return_any` for the AI modules, AI rule 9). Both are CI gates — run them before pushing. No auto-formatter is configured.
 - Python version is kept the same in the local venv, CI (`actions/setup-python`), and the `Dockerfile` — currently 3.14. Bump all three together.
 - Dependabot (`.github/dependabot.yml`) opens weekly PRs for pip, GitHub Actions, and the Docker base image.
 - `requirements.txt` and `requirements-dev.txt` are exact-pinned (`==`). When bumping a dependency, install the new version in `venv`, run the test suite, then update the pin to match — don't hand-edit a version number without testing it.

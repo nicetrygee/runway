@@ -10,7 +10,17 @@ extend-exclude = ["flask_session"]
 # (F = pyflakes, B = bugbear), real style breakage (E, W = pycodestyle), and
 # import ordering (I). Deliberately skips opinionated/stylistic rule sets
 # (e.g. DTZ, UP) that would require broad, unrelated rewrites to adopt.
-select = ["E", "F", "W", "I", "B"]
+# TID is here only for banned-api (TID251), which enforces AGENTS.md AI rule 1.
+select = ["E", "F", "W", "I", "B", "TID"]
+
+[tool.ruff.lint.flake8-tidy-imports.banned-api]
+"openai".msg = "Provider SDKs live in llm.py only — call llm.complete (AGENTS.md AI rule 1)."
+"anthropic".msg = "Provider SDKs live in llm.py only — call llm.complete (AGENTS.md AI rule 1)."
+
+[tool.ruff.lint.per-file-ignores]
+"llm.py" = ["TID251"]
+# The adapter's tests need the SDK's exception types to fake connection errors.
+"tests/test_llm.py" = ["TID251"]
 
 [tool.ruff.lint.isort]
 # Pin explicitly: isort's first/third-party heuristic checks for a same-named
@@ -27,3 +37,11 @@ ignore_missing_imports = true
 # package that shadows the real pip-installed flask_session library.
 namespace_packages = false
 exclude = ["^venv/", "^flask_session/"]
+
+# AGENTS.md AI rule 9: the AI modules are fully typed. The rest of the repo
+# stays on the default (lenient) settings.
+[[tool.mypy.overrides]]
+module = ["llm", "tracing", "prompts", "classify", "evals.*"]
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+warn_return_any = true

@@ -7,6 +7,7 @@ Rules (D15, slice E0.3):
   (priority, mode, item_type)
 title, blast_radius, sprint and notes are free text and not scored in E0.
 """
+from typing import Any
 
 EFFORT_STEPS = [5, 30, 60, 120, 240, 480]
 
@@ -16,28 +17,28 @@ SCORED_FIELDS = ("item_type", "priority", "effort_minutes", "person", "stream", 
                  "due_date")
 
 
-def score_exact(actual, expected):
-    return actual == expected
+def score_exact(actual: Any, expected: Any) -> bool:
+    return bool(actual == expected)
 
 
-def score_effort(actual, expected):
+def score_effort(actual: Any, expected: Any) -> bool:
     if actual not in EFFORT_STEPS or expected not in EFFORT_STEPS:
         return False
     return abs(EFFORT_STEPS.index(actual) - EFFORT_STEPS.index(expected)) <= 1
 
 
-def score_judgement(actual, expected, acceptable):
+def score_judgement(actual: Any, expected: Any, acceptable: list[Any] | None) -> bool:
     return actual == expected or actual in (acceptable or [])
 
 
-def score_case(case, output):
+def score_case(case: dict[str, Any], output: dict[str, Any] | None) -> dict[str, bool]:
     """Score one case. `output` is the parsed ExtractedTask as a dict, or None
     if the model's reply didn't parse — then every field fails."""
     if output is None:
         return {field: False for field in SCORED_FIELDS}
     expected = case["expected"]
     acceptable = case.get("acceptable", {})
-    scores = {}
+    scores: dict[str, bool] = {}
     for field in SCORED_FIELDS:
         if field in EXACT_FIELDS:
             scores[field] = score_exact(output[field], expected[field])
@@ -49,7 +50,7 @@ def score_case(case, output):
     return scores
 
 
-def summarise(results):
+def summarise(results: list[dict[str, bool]]) -> dict[str, float]:
     """Per-field accuracy (fraction correct) across a list of score_case results."""
     if not results:
         return {}

@@ -11,6 +11,7 @@ import json
 import logging
 import os
 import sqlite3
+from typing import Any
 
 import clock
 
@@ -42,7 +43,7 @@ CREATE TABLE IF NOT EXISTS traces (
 """
 
 
-def _ensure_schema(conn):
+def _ensure_schema(conn: sqlite3.Connection) -> None:
     """Create the table, and add columns that older traces.db files lack.
     `hosted` stays NULL ("unknown") on rows written before the guard."""
     conn.execute(SCHEMA)
@@ -55,38 +56,38 @@ def _ensure_schema(conn):
                 raise
 
 
-def traces_db_path():
+def traces_db_path() -> str:
     return os.environ.get("TRACES_DB_PATH", DEFAULT_TRACES_DB_PATH)
 
 
-def tokens_per_second(output_tokens, latency_ms):
+def tokens_per_second(output_tokens: int | None, latency_ms: float | None) -> float | None:
     if not output_tokens or not latency_ms:
         return None
     return output_tokens / (latency_ms / 1000)
 
 
-def _json(value):
+def _json(value: Any) -> str | None:
     return None if value is None else json.dumps(value, default=str)
 
 
 def record(
     *,
-    request_id,
-    feature,
-    model,
-    model_settings,
-    prompt_version,
-    input,
-    output,
-    raw_request,
-    raw_response,
-    input_tokens,
-    output_tokens,
-    latency_ms,
-    success,
-    hosted,
-    error=None,
-):
+    request_id: str,
+    feature: str,
+    model: str | None,
+    model_settings: dict[str, Any],
+    prompt_version: str,
+    input: Any,
+    output: Any,
+    raw_request: dict[str, Any] | None,
+    raw_response: dict[str, Any] | None,
+    input_tokens: int | None,
+    output_tokens: int | None,
+    latency_ms: float | None,
+    success: bool,
+    hosted: bool,
+    error: str | None = None,
+) -> None:
     """Write one trace row. `input`, `model_settings`, `raw_request` and
     `raw_response` are JSON-encoded; `output` is stored as-is if it's already
     a string (text output), else JSON-encoded (parsed structured output)."""
