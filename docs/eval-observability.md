@@ -84,7 +84,7 @@ Every phase ends in a tagged release (`eval-phase-N`), an explain-back note writ
 |---|---|
 | **0 Skeleton** | Minimal interface and LM Studio adapter; traces file; about 10 synthetic Quick Add cases; per-field scoring; live and replay commands. See `slice-e0-skeleton.md` |
 | **1a Guard and rules** | Hosted guard and AGENTS.md rules; prompt versioning; linting and types; CI replay; weekly summary through the interface and traced. See `slice-e1a-guard-rules.md` |
-| **1b Eval depth** | Labelling-guide questionnaire and guide; full eval set (normal, failure, adversarial); synthetic world; repeat-run baseline; dashboard v1 with efficiency metrics; final model choice; Anthropic adapter and first drift report |
+| **1b Eval depth** | Labelling-guide questionnaire and guide; full eval set (normal, failure, adversarial); synthetic world; repeat-run baseline; dashboard v1 with efficiency metrics; final model choice; Anthropic adapter and first drift report. Draft spec, not yet grilled: `slice-e1b-eval-depth.md` |
 | **2 "What next?"** | Read-only tool-using agent; `recommend.py` stays pure and is called as a tool; the engine's ranking is the correct answer; step tracing and a step cap; failure investigation view |
 | **3 "Process my notes"** | Propose-then-approve writes; limited tools; idempotency; injection set; approve, edit and reject decisions as a production signal |
 | **4 "Ask Runway"** | Multi-turn sessions; grounding through cited item IDs; "I don't know" cases; local judge with calibration (the "EM-memory Q&A" from `technical-design.md`) |
