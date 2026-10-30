@@ -1,6 +1,6 @@
 # ADR 0001 — Local model for Quick Add
 
-- **Status:** Proposed. All three candidates measured; peak memory still to be recorded.
+- **Status:** Accepted. All three candidates measured, including peak memory.
 - **Date:** 2026-10-30
 - **Decides:** D2 (model, quantisation, context length). Feeds D4, D5 and D7 in `docs/eval-observability.md`.
 - **Slice:** E1b.6 (`docs/slices/slice-e1b-eval-depth.md`)
@@ -43,7 +43,26 @@ family at 7–9B (Llama 3.1 8B Instruct). D2 sets the order of criteria:
 | Context loaded / max | 4096 / 40,960 | 4096 / 40,960 | 4096 / 131,072 |
 | Size on disk | 4.62 GB | 2.28 GB | 4.53 GB |
 | Loaded size (LM Studio) | 4.31 GiB | 2.12 GiB | 4.22 GiB |
-| Peak memory during the run | _TBD_ | _TBD_ | _TBD_ |
+| Model memory (wired over baseline, peak) | 5.2 GB | 3.3 GB | 5.2 GB |
+| System memory used over baseline (median / peak) | 5.9 / 6.6 GB | 4.6 / 6.8 GB | 5.1 / 5.6 GB |
+| System memory used, peak (of 16 GB) | 12.8 GB | 12.7 GB | 13.3 GB |
+| Lowest free-memory level (macOS) | 41% | 60% | 40% |
+| Swap growth during the run | none | none | none |
+
+**How memory was measured.** Per-process figures in Activity Monitor don't show the model: the
+weights are memory-mapped and wired for the GPU, so no LM Studio process shows more than about
+150 MB. Instead, a script sampled system-wide `vm_stat`, `vm.swapusage` and
+`kern.memorystatus_level` every second, for each model in turn:
+
+1. Unload all models, then take 15 s of baseline.
+2. Load the model (4096 context).
+3. Send the 41 Quick Add notes through `classify`, one at a time. No recordings were written, and
+   traces went to a throwaway DB.
+
+"Used" is app memory + wired + compressed, as Activity Monitor computes it. Wired over baseline is
+the cleanest measure of the model itself. "Used" also moves with other apps: the 4B's used-memory
+peak is about the same as the 8B's, though its wired memory is 2 GB lower. Before the runs, other
+apps were already using about 6–7.5 GB.
 
 ### Accuracy (3 runs each)
 
@@ -114,21 +133,25 @@ All three stay well inside the Quick Add context budget of 1k in / 256 out (D29)
 
 ## Decision
 
-**Qwen3-8B (4-bit, 4096 context)** stays the default local model, provided its peak memory passes
-D2's limit.
+**Qwen3-8B (4-bit, 4096 context)** stays the default local model.
 
+- **Memory: all three pass D2's limit.** At peak, with the user's normal apps open, the system
+  used 12.7–13.3 GB of 16 GB. That leaves about 3 GB for Runway (a small Flask app) and a browser,
+  with no swap growth and macOS's free-memory level at 40% or above. Qwen3-8B adds about 5.2 GB
+  of model memory.
 - It leads on five of seven fields, with the widest margins on `due_date` and `person`.
 - Llama 3.1 8B uses about the same memory and has about the same latency, and is ahead on only
   `item_type` and `mode`. Its `effort_minutes` and `due_date` faults are systematic, not noise.
-- **Runner-up: Qwen3-4B.** It is the only candidate that saves memory or time. If Qwen3-8B fails
-  the memory limit, Llama 3.1 8B would fail it too, so the 4B is the real fallback.
+- **Runner-up: Qwen3-4B.** It is the only candidate that saves memory or time: about 2 GB less
+  model memory and about half the latency. If memory gets tighter, Llama 3.1 8B uses as much as
+  Qwen3-8B, so the 4B is the real fallback.
 
 Because the default doesn't change, `llm.DEFAULT_MODEL`, `.env.example` and the CI `LLM_MODEL` pin
 stay as they are.
 
 ## Follow-on values for `eval-observability.md`
 
-- **D2 → Decided:** Qwen3-8B, 4-bit, 4096 context (pending peak memory).
+- **D2 → Decided:** Qwen3-8B, 4-bit, 4096 context; about 5.2 GB model memory, 12.8 GB system peak.
 - **D4 → Decided:** every model agreed with itself across repeats (one flip in 369 case runs), so
   day-to-day live runs can drop to 1 repeat; keep 3 for model or prompt changes.
 - **D5 floors (targets, not enforced):** 5 points below Qwen3-8B's worst run: item_type 41%,

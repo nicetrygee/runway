@@ -30,12 +30,12 @@ Everything after Phase 2 is optional.
 | # | Decision | Status |
 |---|---|---|
 | D1 | Small capped Anthropic budget for drift runs: prepaid credit, auto-reload off, own workspace and key | Decided |
-| D2 | Final local model, quantisation and context length. Phase 0 uses Qwen3-8B (4-bit) provisionally, with thinking off via `/no_think` in the system prompt. Chosen in E1b.6 from 3 candidates (Qwen3-8B Q4, Qwen3-4B, one other family at 7–9B): peak memory must leave room for Runway and a browser, then accuracy, then p50 latency | Decided (method); model in E1b.6 |
+| D2 | Local model: **Qwen3-8B, 4-bit, 4096-token context**, thinking off via `/no_think`. Chosen in E1b.6 from 3 candidates (Qwen3-8B Q4, Qwen3-4B, Llama 3.1 8B Instruct) on peak memory, then accuracy, then p50 latency: it leads on 5 of 7 fields, including `due_date` and `person`. Runner-up Qwen3-4B (~2 GB less model memory, ~2× faster). Memory: all three pass; Qwen3-8B adds ~5.2 GB, system peak 12.8 of 16 GB with no swap growth. See [ADR 0001](decisions/0001-local-model.md) | Decided |
 | D3 | Judge model: a different family from the one being judged, run as a separate pass | Open |
-| D4 | 3 repeat runs per case at temperature 0. If runs always agree, drop to 1 for day-to-day live runs | Decided |
-| D5 | Per-field floors about 5 points below the chosen model's **worst** of 3 runs. Written down as targets in E1b.6; enforced only by the Phase 5 release gate | Decided (method); numbers in E1b.6 |
+| D4 | 3 repeat runs per case at temperature 0. If runs always agree, drop to 1 for day-to-day live runs. E1b.6: one flip in 369 case runs across 3 models, so day-to-day live runs use 1; model or prompt changes still use 3 | Decided |
+| D5 | Per-field floors about 5 points below the chosen model's **worst** of 3 runs, enforced only by the Phase 5 release gate. Targets for Qwen3-8B on `quick_add.v1`: item_type 41%, priority 66%, effort_minutes 83%, person 93%, stream 71%, mode 49%, due_date 58% | Decided |
 | D6 | All lab data is synthetic. `runway.db` confirmed to hold no real data | Decided |
-| D7 | Cap = 10 suite runs × 3 repeats on the hosted model at measured tokens, rounded up, **with a $10 floor** (estimated ~$3). Auto-reload off | Decided (method); amount in E1b.6 |
+| D7 | Cap = 10 suite runs × 3 repeats on the hosted model at measured tokens, rounded up, **with a $10 floor** (estimated ~$3). Auto-reload off. Measured on the local model: ~15.0k in / 3.5k out tokens per suite run, so ~450k in / ~105k out for the cap. The dollar amount waits for the same measurement on `claude-sonnet-5-5`, since tokenizers differ; the $10 floor applies until then | Decided (method); amount after first hosted run |
 | D8 | Real-environment split deferred. Cheap guard now; full split before the first real note | Decided |
 | D9 | Eval runner is its own command (live / replay / report). Pytest only for unit tests | Decided |
 | D10 | Runway's slice-spec approach, not Spec Kit | Decided |
