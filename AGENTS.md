@@ -33,9 +33,10 @@ says *review only* when nothing automated can. Background:
    features; *review only* for new ones until Phase 3 adds approval tests.
 7. **Replay never falls back to a live call.** → `tests/test_eval_runner.py`
    (missing-recording tests).
-8. **Cases are data PRs, separate from code.** Re-recordings for a version
-   bump are the exception: they ride along in the bump's PR as a separate
-   commit, since they're machine output, not judgement. → *review only*.
+8. **Cases are data PRs, separate from code.** Recordings are the exception:
+   re-recordings for a version bump, and first recordings for new cases, ride
+   along in that PR as a separate commit, since they're machine output, not
+   judgement. → *review only*.
 9. **AI modules are fully typed** (`llm`, `tracing`, `prompts`, `classify`,
    `evals.*`). → the mypy override in `pyproject.toml`.
 
