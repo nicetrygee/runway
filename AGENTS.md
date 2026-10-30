@@ -77,6 +77,15 @@ python -m evals quick_add --live    # call the model, write recordings + report
 python -m evals quick_add --replay  # re-score recordings only; fails if any are missing
 ```
 
+Lab data (D28): `lab.db` is seeded, synthetic and disposable (gitignored). It holds the fictional
+world in `evals/world/world.json`, anchored on `--today` (default: today, UTC). The seeder refuses
+any `runway.db` and any DB that already has users or items.
+
+```bash
+python -m evals.world seed --db sqlite:///lab.db
+DATABASE_URL=sqlite:///lab.db flask --app app:app run   # log in as lab / lab-password
+```
+
 ## Running reliably in the background (macOS)
 
 `flask run` is fine for active coding, but it dies the moment you close the terminal and won't come back on its own. For "keep this running without me watching it," use Gunicorn (multi-worker, replaces a crashed worker automatically) under launchd (macOS's service manager, restarts the whole process if it dies):

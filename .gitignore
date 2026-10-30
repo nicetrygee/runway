@@ -9,3 +9,4 @@ venv/
 .DS_Store
 traces.db
 evals/reports/
+lab.db
