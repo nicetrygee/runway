@@ -1,0 +1,1614 @@
+{
+  "about": "Synthetic, fictional EM world for Runway's lab DB (D28). Every name, project and item is invented. Offsets are days relative to the anchor date passed to `python -m evals.world seed --today`.",
+  "user": {
+    "username": "lab",
+    "password": "lab-password"
+  },
+  "people": [
+    {
+      "name": "Marta",
+      "role": "Senior Engineer",
+      "relationship": "direct report",
+      "team": "Payments Platform"
+    },
+    {
+      "name": "Dev",
+      "role": "Staff Engineer",
+      "relationship": "direct report",
+      "team": "Payments Platform"
+    },
+    {
+      "name": "Lena",
+      "role": "Engineer",
+      "relationship": "direct report",
+      "team": "Payments Platform"
+    },
+    {
+      "name": "Sam",
+      "role": "Engineer (on-call)",
+      "relationship": "direct report",
+      "team": "Payments Platform"
+    },
+    {
+      "name": "Ines",
+      "role": "Engineer",
+      "relationship": "direct report",
+      "team": "Payments Platform"
+    },
+    {
+      "name": "Tomasz",
+      "role": "Engineer (new joiner)",
+      "relationship": "direct report",
+      "team": "Payments Platform"
+    },
+    {
+      "name": "Rhea Castell",
+      "role": "Director of Engineering",
+      "relationship": "manager",
+      "team": "Engineering"
+    },
+    {
+      "name": "Juno",
+      "role": "Product Manager",
+      "relationship": "peer",
+      "team": "Product"
+    },
+    {
+      "name": "Noor",
+      "role": "Product Designer",
+      "relationship": "peer",
+      "team": "Design"
+    },
+    {
+      "name": "Felix Amari",
+      "role": "Engineering Manager",
+      "relationship": "peer EM",
+      "team": "Data Platform"
+    },
+    {
+      "name": "Theo Lindqvist",
+      "role": "SRE Lead",
+      "relationship": "cross-team",
+      "team": "Infrastructure"
+    },
+    {
+      "name": "Oskar Brandt",
+      "role": "Security Lead",
+      "relationship": "stakeholder",
+      "team": "Security"
+    },
+    {
+      "name": "Bram Oyelaran",
+      "role": "Head of Support",
+      "relationship": "stakeholder",
+      "team": "Customer Support"
+    },
+    {
+      "name": "Calla Novak",
+      "role": "Finance Partner",
+      "relationship": "stakeholder",
+      "team": "Finance"
+    },
+    {
+      "name": "Wren Haddad",
+      "role": "Recruiter",
+      "relationship": "stakeholder",
+      "team": "Talent"
+    }
+  ],
+  "projects": [
+    {
+      "codename": "Kestrel",
+      "summary": "Public API v2 redesign; Dev leads.",
+      "people": [
+        "Dev",
+        "Tomasz",
+        "Juno"
+      ]
+    },
+    {
+      "codename": "Halcyon",
+      "summary": "Payments checkout rework and its release.",
+      "people": [
+        "Juno",
+        "Noor",
+        "Marta",
+        "Sam",
+        "Lena",
+        "Bram Oyelaran"
+      ]
+    },
+    {
+      "codename": "Atlas",
+      "summary": "PCI and pen-test hardening.",
+      "people": [
+        "Oskar Brandt",
+        "Theo Lindqvist"
+      ]
+    },
+    {
+      "codename": "Meridian",
+      "summary": "Ledger data migration; depends on Data Platform.",
+      "people": [
+        "Felix Amari",
+        "Ines",
+        "Dev"
+      ]
+    }
+  ],
+  "items": [
+    {
+      "title": "Write Q1 roadmap themes for Payments Platform",
+      "stream": "task",
+      "item_type": "Strategy",
+      "priority": "Important",
+      "status": "backlog",
+      "effort_minutes": 240,
+      "mode": "proactive",
+      "person": null,
+      "project": null,
+      "is_blocking": 0,
+      "notes": "Three themes max; tie each to a Halcyon or Kestrel outcome.",
+      "created_offset_days": -10,
+      "last_touched_offset_days": -10,
+      "due_offset_days": 8,
+      "events": []
+    },
+    {
+      "title": "Prepare agenda for team retro",
+      "stream": "task",
+      "item_type": "People",
+      "priority": "Normal",
+      "status": "backlog",
+      "effort_minutes": 30,
+      "mode": "proactive",
+      "person": null,
+      "project": null,
+      "is_blocking": 0,
+      "notes": "",
+      "created_offset_days": -3,
+      "last_touched_offset_days": -3,
+      "due_offset_days": 2,
+      "events": []
+    },
+    {
+      "title": "Update on-call runbook for the Halcyon payments API",
+      "stream": "task",
+      "item_type": "Operational",
+      "priority": "Normal",
+      "status": "in_progress",
+      "effort_minutes": 60,
+      "mode": "reactive",
+      "person": null,
+      "project": "Halcyon",
+      "is_blocking": 0,
+      "notes": "Add the retry-storm section from last month's page.",
+      "created_offset_days": -12,
+      "last_touched_offset_days": -4,
+      "due_offset_days": null,
+      "events": [
+        {
+          "type": "status_changed",
+          "offset_days": -4,
+          "payload": {
+            "status": "in_progress"
+          }
+        }
+      ]
+    },
+    {
+      "title": "Read the Atlas pen-test report draft",
+      "stream": "task",
+      "item_type": "Technical",
+      "priority": "Important",
+      "status": "in_progress",
+      "effort_minutes": 60,
+      "mode": "reactive",
+      "person": null,
+      "project": "Atlas",
+      "is_blocking": 0,
+      "notes": "",
+      "created_offset_days": -6,
+      "last_touched_offset_days": -4,
+      "due_offset_days": -2,
+      "events": [
+        {
+          "type": "status_changed",
+          "offset_days": -4,
+          "payload": {
+            "status": "in_progress"
+          }
+        }
+      ]
+    },
+    {
+      "title": "Write post-incident review for the Halcyon checkout timeouts",
+      "stream": "task",
+      "item_type": "Technical",
+      "priority": "Important",
+      "status": "backlog",
+      "effort_minutes": 120,
+      "mode": "reactive",
+      "person": "Sam",
+      "project": "Halcyon",
+      "is_blocking": 0,
+      "notes": "Sam has the timeline; I own the write-up.",
+      "created_offset_days": -9,
+      "last_touched_offset_days": -9,
+      "due_offset_days": -3,
+      "events": []
+    },
+    {
+      "title": "Plan Tomasz's 30-day onboarding goals",
+      "stream": "task",
+      "item_type": "People",
+      "priority": "Important",
+      "status": "in_progress",
+      "effort_minutes": 60,
+      "mode": "proactive",
+      "person": "Tomasz",
+      "project": null,
+      "is_blocking": 0,
+      "notes": "",
+      "created_offset_days": -14,
+      "last_touched_offset_days": -2,
+      "due_offset_days": 3,
+      "events": [
+        {
+          "type": "status_changed",
+          "offset_days": -2,
+          "payload": {
+            "status": "in_progress"
+          }
+        }
+      ]
+    },
+    {
+      "title": "Write growth plan notes for Ines",
+      "stream": "task",
+      "item_type": "People",
+      "priority": "Important",
+      "status": "backlog",
+      "effort_minutes": 60,
+      "mode": "proactive",
+      "person": "Ines",
+      "project": null,
+      "is_blocking": 0,
+      "notes": "She asked about the staff track in our last 1:1.",
+      "created_offset_days": -24,
+      "last_touched_offset_days": -22,
+      "due_offset_days": null,
+      "events": [
+        {
+          "type": "touched",
+          "offset_days": -22
+        }
+      ]
+    },
+    {
+      "title": "Prep 1:1 agenda with Ines",
+      "stream": "task",
+      "item_type": "People",
+      "priority": "Important",
+      "status": "backlog",
+      "effort_minutes": 30,
+      "mode": "proactive",
+      "person": "Ines",
+      "project": null,
+      "is_blocking": 0,
+      "notes": "",
+      "created_offset_days": -21,
+      "last_touched_offset_days": -21,
+      "due_offset_days": -7,
+      "events": []
+    },
+    {
+      "title": "Review the Meridian cutover risk register",
+      "stream": "task",
+      "item_type": "Technical",
+      "priority": "Normal",
+      "status": "backlog",
+      "effort_minutes": 60,
+      "mode": "reactive",
+      "person": null,
+      "project": "Meridian",
+      "is_blocking": 0,
+      "notes": "",
+      "created_offset_days": -6,
+      "last_touched_offset_days": -6,
+      "due_offset_days": 5,
+      "events": []
+    },
+    {
+      "title": "Book travel for the planning offsite",
+      "stream": "task",
+      "item_type": "Personal-admin",
+      "priority": "Normal",
+      "status": "backlog",
+      "effort_minutes": 30,
+      "mode": "reactive",
+      "person": null,
+      "project": null,
+      "is_blocking": 0,
+      "notes": "",
+      "created_offset_days": -5,
+      "last_touched_offset_days": -5,
+      "due_offset_days": 12,
+      "events": []
+    },
+    {
+      "title": "Clean up stale Kestrel feature flags",
+      "stream": "task",
+      "item_type": "Technical",
+      "priority": "Normal",
+      "status": "backlog",
+      "effort_minutes": 120,
+      "mode": "proactive",
+      "person": null,
+      "project": "Kestrel",
+      "is_blocking": 0,
+      "notes": "",
+      "created_offset_days": -30,
+      "last_touched_offset_days": -30,
+      "due_offset_days": null,
+      "events": []
+    },
+    {
+      "title": "Draft team working agreement v2",
+      "stream": "task",
+      "item_type": "People",
+      "priority": "Normal",
+      "status": "backlog",
+      "effort_minutes": 120,
+      "mode": "proactive",
+      "person": null,
+      "project": null,
+      "is_blocking": 0,
+      "notes": "",
+      "created_offset_days": -18,
+      "last_touched_offset_days": -18,
+      "due_offset_days": null,
+      "events": []
+    },
+    {
+      "title": "Review the Q4 cloud cost report",
+      "stream": "task",
+      "item_type": "Operational",
+      "priority": "Normal",
+      "status": "backlog",
+      "effort_minutes": 30,
+      "mode": "reactive",
+      "person": null,
+      "project": null,
+      "is_blocking": 0,
+      "notes": "",
+      "created_offset_days": -4,
+      "last_touched_offset_days": -4,
+      "due_offset_days": 4,
+      "events": []
+    },
+    {
+      "title": "Shortlist candidates for the senior backend role",
+      "stream": "task",
+      "item_type": "Hiring",
+      "priority": "Important",
+      "status": "in_progress",
+      "effort_minutes": 60,
+      "mode": "reactive",
+      "person": "Wren Haddad",
+      "project": null,
+      "is_blocking": 0,
+      "notes": "",
+      "created_offset_days": -8,
+      "last_touched_offset_days": -1,
+      "due_offset_days": 1,
+      "events": [
+        {
+          "type": "status_changed",
+          "offset_days": -1,
+          "payload": {
+            "status": "in_progress"
+          }
+        }
+      ]
+    },
+    {
+      "title": "Write the interview scorecard for the SRE role",
+      "stream": "task",
+      "item_type": "Hiring",
+      "priority": "Normal",
+      "status": "backlog",
+      "effort_minutes": 60,
+      "mode": "proactive",
+      "person": null,
+      "project": null,
+      "is_blocking": 0,
+      "notes": "",
+      "created_offset_days": -11,
+      "last_touched_offset_days": -11,
+      "due_offset_days": null,
+      "events": []
+    },
+    {
+      "title": "Renew the conference ticket",
+      "stream": "task",
+      "item_type": "Personal-admin",
+      "priority": "Ignore",
+      "status": "backlog",
+      "effort_minutes": 5,
+      "mode": "reactive",
+      "person": null,
+      "project": null,
+      "is_blocking": 0,
+      "notes": "",
+      "created_offset_days": -7,
+      "last_touched_offset_days": -7,
+      "due_offset_days": null,
+      "events": []
+    },
+    {
+      "title": "Triage Support's top checkout complaints",
+      "stream": "task",
+      "item_type": "Stakeholder",
+      "priority": "Important",
+      "status": "backlog",
+      "effort_minutes": 60,
+      "mode": "reactive",
+      "person": "Bram Oyelaran",
+      "project": "Halcyon",
+      "is_blocking": 0,
+      "notes": "",
+      "created_offset_days": -3,
+      "last_touched_offset_days": -3,
+      "due_offset_days": 1,
+      "events": []
+    },
+    {
+      "title": "Fix alert noise on Halcyon payment retries",
+      "stream": "task",
+      "item_type": "Operational",
+      "priority": "Normal",
+      "status": "done",
+      "effort_minutes": 120,
+      "mode": "reactive",
+      "person": null,
+      "project": "Halcyon",
+      "is_blocking": 0,
+      "notes": "",
+      "created_offset_days": -16,
+      "last_touched_offset_days": -9,
+      "due_offset_days": null,
+      "events": [
+        {
+          "type": "status_changed",
+          "offset_days": -13,
+          "payload": {
+            "status": "in_progress"
+          }
+        },
+        {
+          "type": "status_changed",
+          "offset_days": -9,
+          "payload": {
+            "status": "done"
+          }
+        },
+        {
+          "type": "completed",
+          "offset_days": -9
+        }
+      ]
+    },
+    {
+      "title": "Outline the Kestrel v2 migration guide",
+      "stream": "task",
+      "item_type": "Delivery",
+      "priority": "Normal",
+      "status": "done",
+      "effort_minutes": 120,
+      "mode": "proactive",
+      "person": null,
+      "project": "Kestrel",
+      "is_blocking": 0,
+      "notes": "",
+      "created_offset_days": -20,
+      "last_touched_offset_days": -6,
+      "due_offset_days": null,
+      "events": [
+        {
+          "type": "status_changed",
+          "offset_days": -13,
+          "payload": {
+            "status": "in_progress"
+          }
+        },
+        {
+          "type": "status_changed",
+          "offset_days": -6,
+          "payload": {
+            "status": "done"
+          }
+        },
+        {
+          "type": "completed",
+          "offset_days": -6
+        }
+      ]
+    },
+    {
+      "title": "Run the team retro",
+      "stream": "task",
+      "item_type": "People",
+      "priority": "Normal",
+      "status": "done",
+      "effort_minutes": 60,
+      "mode": "proactive",
+      "person": null,
+      "project": null,
+      "is_blocking": 0,
+      "notes": "",
+      "created_offset_days": -15,
+      "last_touched_offset_days": -13,
+      "due_offset_days": null,
+      "events": [
+        {
+          "type": "status_changed",
+          "offset_days": -14,
+          "payload": {
+            "status": "in_progress"
+          }
+        },
+        {
+          "type": "status_changed",
+          "offset_days": -13,
+          "payload": {
+            "status": "done"
+          }
+        },
+        {
+          "type": "completed",
+          "offset_days": -13
+        }
+      ]
+    },
+    {
+      "title": "Prepare quarterly business review slides",
+      "stream": "task",
+      "item_type": "Stakeholder",
+      "priority": "Important",
+      "status": "done",
+      "effort_minutes": 240,
+      "mode": "reactive",
+      "person": "Rhea Castell",
+      "project": null,
+      "is_blocking": 0,
+      "notes": "",
+      "created_offset_days": -19,
+      "last_touched_offset_days": -11,
+      "due_offset_days": null,
+      "events": [
+        {
+          "type": "status_changed",
+          "offset_days": -15,
+          "payload": {
+            "status": "in_progress"
+          }
+        },
+        {
+          "type": "status_changed",
+          "offset_days": -11,
+          "payload": {
+            "status": "done"
+          }
+        },
+        {
+          "type": "completed",
+          "offset_days": -11
+        }
+      ]
+    },
+    {
+      "title": "Rehearse the Halcyon launch go/no-go",
+      "stream": "task",
+      "item_type": "Delivery",
+      "priority": "Critical",
+      "status": "backlog",
+      "effort_minutes": 60,
+      "mode": "reactive",
+      "person": null,
+      "project": "Halcyon",
+      "is_blocking": 0,
+      "notes": "",
+      "created_offset_days": -2,
+      "last_touched_offset_days": -1,
+      "due_offset_days": 2,
+      "events": [
+        {
+          "type": "touched",
+          "offset_days": -1
+        }
+      ]
+    },
+    {
+      "title": "Sign off the Kestrel v2 pagination design",
+      "stream": "commitment",
+      "item_type": "Technical",
+      "priority": "Important",
+      "status": "backlog",
+      "effort_minutes": 60,
+      "mode": "reactive",
+      "person": "Dev",
+      "project": "Kestrel",
+      "is_blocking": 3,
+      "notes": "Dev, Tomasz and the Kestrel client work are all waiting on this.",
+      "created_offset_days": -12,
+      "last_touched_offset_days": -12,
+      "due_offset_days": -4,
+      "events": []
+    },
+    {
+      "title": "Write Marta's promotion case for calibration",
+      "stream": "commitment",
+      "item_type": "People",
+      "priority": "Important",
+      "status": "in_progress",
+      "effort_minutes": 240,
+      "mode": "proactive",
+      "person": "Marta",
+      "project": null,
+      "is_blocking": 1,
+      "notes": "",
+      "created_offset_days": -20,
+      "last_touched_offset_days": -10,
+      "due_offset_days": 6,
+      "events": [
+        {
+          "type": "status_changed",
+          "offset_days": -10,
+          "payload": {
+            "status": "in_progress"
+          }
+        }
+      ]
+    },
+    {
+      "title": "Send the 2027 headcount plan to Rhea",
+      "stream": "commitment",
+      "item_type": "Strategy",
+      "priority": "Critical",
+      "status": "in_progress",
+      "effort_minutes": 240,
+      "mode": "reactive",
+      "person": "Rhea Castell",
+      "project": null,
+      "is_blocking": 0,
+      "notes": "",
+      "created_offset_days": -15,
+      "last_touched_offset_days": -5,
+      "due_offset_days": -1,
+      "events": [
+        {
+          "type": "status_changed",
+          "offset_days": -5,
+          "payload": {
+            "status": "in_progress"
+          }
+        }
+      ]
+    },
+    {
+      "title": "Send Halcyon release notes to Juno",
+      "stream": "commitment",
+      "item_type": "Delivery",
+      "priority": "Important",
+      "status": "backlog",
+      "effort_minutes": 30,
+      "mode": "reactive",
+      "person": "Juno",
+      "project": "Halcyon",
+      "is_blocking": 0,
+      "notes": "",
+      "created_offset_days": -7,
+      "last_touched_offset_days": -7,
+      "due_offset_days": -2,
+      "events": []
+    },
+    {
+      "title": "Give Noor feedback on the checkout error-state designs",
+      "stream": "commitment",
+      "item_type": "Delivery",
+      "priority": "Normal",
+      "status": "backlog",
+      "effort_minutes": 30,
+      "mode": "reactive",
+      "person": "Noor",
+      "project": "Halcyon",
+      "is_blocking": 1,
+      "notes": "",
+      "created_offset_days": -5,
+      "last_touched_offset_days": -5,
+      "due_offset_days": 1,
+      "events": []
+    },
+    {
+      "title": "Share the Meridian ledger field mapping with Felix",
+      "stream": "commitment",
+      "item_type": "Technical",
+      "priority": "Important",
+      "status": "backlog",
+      "effort_minutes": 60,
+      "mode": "reactive",
+      "person": "Felix Amari",
+      "project": "Meridian",
+      "is_blocking": 2,
+      "notes": "His team can't start the schema without it.",
+      "created_offset_days": -9,
+      "last_touched_offset_days": -9,
+      "due_offset_days": 2,
+      "events": []
+    },
+    {
+      "title": "Confirm Atlas remediation dates with Oskar Brandt",
+      "stream": "commitment",
+      "item_type": "Stakeholder",
+      "priority": "Important",
+      "status": "backlog",
+      "effort_minutes": 30,
+      "mode": "reactive",
+      "person": "Oskar Brandt",
+      "project": "Atlas",
+      "is_blocking": 0,
+      "notes": "",
+      "created_offset_days": -6,
+      "last_touched_offset_days": -6,
+      "due_offset_days": 3,
+      "events": []
+    },
+    {
+      "title": "Send Calla the Q1 tooling budget request",
+      "stream": "commitment",
+      "item_type": "Operational",
+      "priority": "Normal",
+      "status": "backlog",
+      "effort_minutes": 60,
+      "mode": "reactive",
+      "person": "Calla Novak",
+      "project": null,
+      "is_blocking": 0,
+      "notes": "",
+      "created_offset_days": -10,
+      "last_touched_offset_days": -10,
+      "due_offset_days": 10,
+      "events": []
+    },
+    {
+      "title": "Write peer feedback for Lena",
+      "stream": "commitment",
+      "item_type": "People",
+      "priority": "Normal",
+      "status": "backlog",
+      "effort_minutes": 30,
+      "mode": "reactive",
+      "person": "Lena",
+      "project": null,
+      "is_blocking": 0,
+      "notes": "",
+      "created_offset_days": -4,
+      "last_touched_offset_days": -4,
+      "due_offset_days": 7,
+      "events": []
+    },
+    {
+      "title": "Present the Halcyon incident summary to Support leads",
+      "stream": "commitment",
+      "item_type": "Stakeholder",
+      "priority": "Normal",
+      "status": "backlog",
+      "effort_minutes": 60,
+      "mode": "reactive",
+      "person": "Bram Oyelaran",
+      "project": "Halcyon",
+      "is_blocking": 0,
+      "notes": "",
+      "created_offset_days": -3,
+      "last_touched_offset_days": -3,
+      "due_offset_days": 5,
+      "events": []
+    },
+    {
+      "title": "Send the Kestrel v2 timeline to Juno",
+      "stream": "commitment",
+      "item_type": "Delivery",
+      "priority": "Important",
+      "status": "done",
+      "effort_minutes": 30,
+      "mode": "reactive",
+      "person": "Juno",
+      "project": "Kestrel",
+      "is_blocking": 0,
+      "notes": "",
+      "created_offset_days": -17,
+      "last_touched_offset_days": -12,
+      "due_offset_days": null,
+      "events": [
+        {
+          "type": "status_changed",
+          "offset_days": -15,
+          "payload": {
+            "status": "in_progress"
+          }
+        },
+        {
+          "type": "status_changed",
+          "offset_days": -12,
+          "payload": {
+            "status": "done"
+          }
+        },
+        {
+          "type": "completed",
+          "offset_days": -12
+        }
+      ]
+    },
+    {
+      "title": "Introduce Tomasz to Theo for infra access",
+      "stream": "commitment",
+      "item_type": "People",
+      "priority": "Normal",
+      "status": "done",
+      "effort_minutes": 5,
+      "mode": "proactive",
+      "person": "Tomasz",
+      "project": null,
+      "is_blocking": 0,
+      "notes": "",
+      "created_offset_days": -14,
+      "last_touched_offset_days": -13,
+      "due_offset_days": null,
+      "events": [
+        {
+          "type": "status_changed",
+          "offset_days": -13,
+          "payload": {
+            "status": "done"
+          }
+        },
+        {
+          "type": "completed",
+          "offset_days": -13
+        }
+      ]
+    },
+    {
+      "title": "Review Sam's on-call handover doc",
+      "stream": "commitment",
+      "item_type": "Operational",
+      "priority": "Normal",
+      "status": "done",
+      "effort_minutes": 30,
+      "mode": "reactive",
+      "person": "Sam",
+      "project": null,
+      "is_blocking": 0,
+      "notes": "",
+      "created_offset_days": -9,
+      "last_touched_offset_days": -7,
+      "due_offset_days": null,
+      "events": [
+        {
+          "type": "status_changed",
+          "offset_days": -8,
+          "payload": {
+            "status": "in_progress"
+          }
+        },
+        {
+          "type": "status_changed",
+          "offset_days": -7,
+          "payload": {
+            "status": "done"
+          }
+        },
+        {
+          "type": "completed",
+          "offset_days": -7
+        }
+      ]
+    },
+    {
+      "title": "Reply to Wren about the senior backend job description",
+      "stream": "commitment",
+      "item_type": "Hiring",
+      "priority": "Normal",
+      "status": "backlog",
+      "effort_minutes": 30,
+      "mode": "reactive",
+      "person": "Wren Haddad",
+      "project": null,
+      "is_blocking": 0,
+      "notes": "",
+      "created_offset_days": -2,
+      "last_touched_offset_days": -2,
+      "due_offset_days": 1,
+      "events": []
+    },
+    {
+      "title": "Lena owns the on-call rota rewrite",
+      "stream": "delegation",
+      "item_type": "Operational",
+      "priority": "Delegate",
+      "status": "in_progress",
+      "effort_minutes": 240,
+      "mode": "proactive",
+      "person": "Lena",
+      "project": null,
+      "is_blocking": 0,
+      "notes": "",
+      "created_offset_days": -10,
+      "last_touched_offset_days": -6,
+      "due_offset_days": 5,
+      "events": [
+        {
+          "type": "delegated",
+          "offset_days": -10
+        },
+        {
+          "type": "status_changed",
+          "offset_days": -6,
+          "payload": {
+            "status": "in_progress"
+          }
+        }
+      ]
+    },
+    {
+      "title": "Dev drafts the Kestrel v2 rate-limit RFC",
+      "stream": "delegation",
+      "item_type": "Technical",
+      "priority": "Delegate",
+      "status": "in_progress",
+      "effort_minutes": 480,
+      "mode": "proactive",
+      "person": "Dev",
+      "project": "Kestrel",
+      "is_blocking": 0,
+      "notes": "",
+      "created_offset_days": -13,
+      "last_touched_offset_days": -3,
+      "due_offset_days": 9,
+      "events": [
+        {
+          "type": "delegated",
+          "offset_days": -13
+        },
+        {
+          "type": "status_changed",
+          "offset_days": -3,
+          "payload": {
+            "status": "in_progress"
+          }
+        }
+      ]
+    },
+    {
+      "title": "Marta leads the Halcyon load test",
+      "stream": "delegation",
+      "item_type": "Delivery",
+      "priority": "Important",
+      "status": "in_progress",
+      "effort_minutes": 240,
+      "mode": "reactive",
+      "person": "Marta",
+      "project": "Halcyon",
+      "is_blocking": 0,
+      "notes": "",
+      "created_offset_days": -8,
+      "last_touched_offset_days": -2,
+      "due_offset_days": 3,
+      "events": [
+        {
+          "type": "delegated",
+          "offset_days": -8
+        },
+        {
+          "type": "status_changed",
+          "offset_days": -2,
+          "payload": {
+            "status": "in_progress"
+          }
+        }
+      ]
+    },
+    {
+      "title": "Sam fixes the flaky checkout integration tests",
+      "stream": "delegation",
+      "item_type": "Technical",
+      "priority": "Normal",
+      "status": "in_progress",
+      "effort_minutes": 120,
+      "mode": "reactive",
+      "person": "Sam",
+      "project": "Halcyon",
+      "is_blocking": 0,
+      "notes": "",
+      "created_offset_days": -11,
+      "last_touched_offset_days": -8,
+      "due_offset_days": -1,
+      "events": [
+        {
+          "type": "delegated",
+          "offset_days": -11
+        },
+        {
+          "type": "status_changed",
+          "offset_days": -8,
+          "payload": {
+            "status": "in_progress"
+          }
+        }
+      ]
+    },
+    {
+      "title": "Tomasz ships his first Kestrel bugfix",
+      "stream": "delegation",
+      "item_type": "Delivery",
+      "priority": "Normal",
+      "status": "in_progress",
+      "effort_minutes": 120,
+      "mode": "proactive",
+      "person": "Tomasz",
+      "project": "Kestrel",
+      "is_blocking": 0,
+      "notes": "",
+      "created_offset_days": -9,
+      "last_touched_offset_days": -5,
+      "due_offset_days": null,
+      "events": [
+        {
+          "type": "delegated",
+          "offset_days": -9
+        },
+        {
+          "type": "status_changed",
+          "offset_days": -5,
+          "payload": {
+            "status": "in_progress"
+          }
+        }
+      ]
+    },
+    {
+      "title": "Ines picks up the Meridian reconciliation job",
+      "stream": "delegation",
+      "item_type": "Technical",
+      "priority": "Important",
+      "status": "backlog",
+      "effort_minutes": 480,
+      "mode": "reactive",
+      "person": "Ines",
+      "project": "Meridian",
+      "is_blocking": 0,
+      "notes": "",
+      "created_offset_days": -23,
+      "last_touched_offset_days": -23,
+      "due_offset_days": -5,
+      "events": [
+        {
+          "type": "delegated",
+          "offset_days": -23
+        }
+      ]
+    },
+    {
+      "title": "Theo sizes the Atlas log-retention change",
+      "stream": "delegation",
+      "item_type": "Technical",
+      "priority": "Normal",
+      "status": "backlog",
+      "effort_minutes": 120,
+      "mode": "reactive",
+      "person": "Theo Lindqvist",
+      "project": "Atlas",
+      "is_blocking": 0,
+      "notes": "",
+      "created_offset_days": -7,
+      "last_touched_offset_days": -7,
+      "due_offset_days": null,
+      "events": [
+        {
+          "type": "delegated",
+          "offset_days": -7
+        }
+      ]
+    },
+    {
+      "title": "Noor runs a usability test on checkout v3",
+      "stream": "delegation",
+      "item_type": "Delivery",
+      "priority": "Normal",
+      "status": "in_progress",
+      "effort_minutes": 240,
+      "mode": "proactive",
+      "person": "Noor",
+      "project": "Halcyon",
+      "is_blocking": 0,
+      "notes": "",
+      "created_offset_days": -6,
+      "last_touched_offset_days": -4,
+      "due_offset_days": 6,
+      "events": [
+        {
+          "type": "delegated",
+          "offset_days": -6
+        },
+        {
+          "type": "status_changed",
+          "offset_days": -4,
+          "payload": {
+            "status": "in_progress"
+          }
+        }
+      ]
+    },
+    {
+      "title": "Lena writes the Halcyon refunds runbook",
+      "stream": "delegation",
+      "item_type": "Operational",
+      "priority": "Normal",
+      "status": "backlog",
+      "effort_minutes": 120,
+      "mode": "proactive",
+      "person": "Lena",
+      "project": "Halcyon",
+      "is_blocking": 0,
+      "notes": "",
+      "created_offset_days": -5,
+      "last_touched_offset_days": -5,
+      "due_offset_days": 10,
+      "events": [
+        {
+          "type": "delegated",
+          "offset_days": -5
+        }
+      ]
+    },
+    {
+      "title": "Dev reviews the Meridian API contract",
+      "stream": "delegation",
+      "item_type": "Technical",
+      "priority": "Normal",
+      "status": "done",
+      "effort_minutes": 120,
+      "mode": "reactive",
+      "person": "Dev",
+      "project": "Meridian",
+      "is_blocking": 0,
+      "notes": "",
+      "created_offset_days": -18,
+      "last_touched_offset_days": -10,
+      "due_offset_days": null,
+      "events": [
+        {
+          "type": "delegated",
+          "offset_days": -18
+        },
+        {
+          "type": "status_changed",
+          "offset_days": -14,
+          "payload": {
+            "status": "in_progress"
+          }
+        },
+        {
+          "type": "status_changed",
+          "offset_days": -10,
+          "payload": {
+            "status": "done"
+          }
+        },
+        {
+          "type": "completed",
+          "offset_days": -10
+        }
+      ]
+    },
+    {
+      "title": "Sam rotates the Halcyon API keys",
+      "stream": "delegation",
+      "item_type": "Operational",
+      "priority": "Important",
+      "status": "done",
+      "effort_minutes": 60,
+      "mode": "reactive",
+      "person": "Sam",
+      "project": "Halcyon",
+      "is_blocking": 0,
+      "notes": "",
+      "created_offset_days": -12,
+      "last_touched_offset_days": -8,
+      "due_offset_days": null,
+      "events": [
+        {
+          "type": "delegated",
+          "offset_days": -12
+        },
+        {
+          "type": "status_changed",
+          "offset_days": -10,
+          "payload": {
+            "status": "in_progress"
+          }
+        },
+        {
+          "type": "status_changed",
+          "offset_days": -8,
+          "payload": {
+            "status": "done"
+          }
+        },
+        {
+          "type": "completed",
+          "offset_days": -8
+        }
+      ]
+    },
+    {
+      "title": "Marta mentors Tomasz on the payments domain",
+      "stream": "delegation",
+      "item_type": "People",
+      "priority": "Delegate",
+      "status": "in_progress",
+      "effort_minutes": 240,
+      "mode": "proactive",
+      "person": "Marta",
+      "project": null,
+      "is_blocking": 0,
+      "notes": "",
+      "created_offset_days": -14,
+      "last_touched_offset_days": -14,
+      "due_offset_days": null,
+      "events": [
+        {
+          "type": "delegated",
+          "offset_days": -14
+        },
+        {
+          "type": "status_changed",
+          "offset_days": -14,
+          "payload": {
+            "status": "in_progress"
+          }
+        }
+      ]
+    },
+    {
+      "title": "Atlas pen-test sign-off from Oskar Brandt",
+      "stream": "waiting",
+      "item_type": "Delivery",
+      "priority": "Important",
+      "status": "blocked",
+      "effort_minutes": 5,
+      "mode": "reactive",
+      "person": "Oskar Brandt",
+      "project": "Atlas",
+      "is_blocking": 0,
+      "notes": "Can't ship Atlas until this lands.",
+      "created_offset_days": -14,
+      "last_touched_offset_days": -9,
+      "due_offset_days": -3,
+      "events": [
+        {
+          "type": "status_changed",
+          "offset_days": -9,
+          "payload": {
+            "status": "blocked"
+          }
+        }
+      ]
+    },
+    {
+      "title": "Meridian ledger schema from Felix Amari",
+      "stream": "waiting",
+      "item_type": "Technical",
+      "priority": "Important",
+      "status": "blocked",
+      "effort_minutes": 5,
+      "mode": "reactive",
+      "person": "Felix Amari",
+      "project": "Meridian",
+      "is_blocking": 0,
+      "notes": "",
+      "created_offset_days": -16,
+      "last_touched_offset_days": -7,
+      "due_offset_days": -2,
+      "events": [
+        {
+          "type": "status_changed",
+          "offset_days": -7,
+          "payload": {
+            "status": "blocked"
+          }
+        }
+      ]
+    },
+    {
+      "title": "Senior backend offer approval from Wren Haddad",
+      "stream": "waiting",
+      "item_type": "Hiring",
+      "priority": "Important",
+      "status": "backlog",
+      "effort_minutes": 5,
+      "mode": "reactive",
+      "person": "Wren Haddad",
+      "project": null,
+      "is_blocking": 0,
+      "notes": "",
+      "created_offset_days": -6,
+      "last_touched_offset_days": -6,
+      "due_offset_days": 1,
+      "events": []
+    },
+    {
+      "title": "Halcyon launch date confirmation from Juno",
+      "stream": "waiting",
+      "item_type": "Delivery",
+      "priority": "Important",
+      "status": "backlog",
+      "effort_minutes": 5,
+      "mode": "reactive",
+      "person": "Juno",
+      "project": "Halcyon",
+      "is_blocking": 0,
+      "notes": "",
+      "created_offset_days": -4,
+      "last_touched_offset_days": -4,
+      "due_offset_days": 1,
+      "events": []
+    },
+    {
+      "title": "Headcount guidance from Rhea Castell",
+      "stream": "waiting",
+      "item_type": "Strategy",
+      "priority": "Important",
+      "status": "backlog",
+      "effort_minutes": 5,
+      "mode": "reactive",
+      "person": "Rhea Castell",
+      "project": null,
+      "is_blocking": 0,
+      "notes": "",
+      "created_offset_days": -12,
+      "last_touched_offset_days": -12,
+      "due_offset_days": null,
+      "events": []
+    },
+    {
+      "title": "Q1 tooling budget decision from Calla Novak",
+      "stream": "waiting",
+      "item_type": "Operational",
+      "priority": "Normal",
+      "status": "backlog",
+      "effort_minutes": 5,
+      "mode": "reactive",
+      "person": "Calla Novak",
+      "project": null,
+      "is_blocking": 0,
+      "notes": "",
+      "created_offset_days": -3,
+      "last_touched_offset_days": -1,
+      "due_offset_days": null,
+      "events": [
+        {
+          "type": "followed_up",
+          "offset_days": -1
+        }
+      ]
+    },
+    {
+      "title": "Final checkout v3 designs from Noor",
+      "stream": "waiting",
+      "item_type": "Delivery",
+      "priority": "Normal",
+      "status": "backlog",
+      "effort_minutes": 5,
+      "mode": "reactive",
+      "person": "Noor",
+      "project": "Halcyon",
+      "is_blocking": 0,
+      "notes": "",
+      "created_offset_days": -5,
+      "last_touched_offset_days": -2,
+      "due_offset_days": 4,
+      "events": [
+        {
+          "type": "followed_up",
+          "offset_days": -2
+        }
+      ]
+    },
+    {
+      "title": "Infra quota increase from Theo Lindqvist",
+      "stream": "waiting",
+      "item_type": "Operational",
+      "priority": "Normal",
+      "status": "blocked",
+      "effort_minutes": 5,
+      "mode": "reactive",
+      "person": "Theo Lindqvist",
+      "project": "Kestrel",
+      "is_blocking": 0,
+      "notes": "",
+      "created_offset_days": -10,
+      "last_touched_offset_days": -10,
+      "due_offset_days": null,
+      "events": [
+        {
+          "type": "status_changed",
+          "offset_days": -10,
+          "payload": {
+            "status": "blocked"
+          }
+        }
+      ]
+    },
+    {
+      "title": "Support ticket export from Bram Oyelaran",
+      "stream": "waiting",
+      "item_type": "Stakeholder",
+      "priority": "Normal",
+      "status": "backlog",
+      "effort_minutes": 5,
+      "mode": "reactive",
+      "person": "Bram Oyelaran",
+      "project": "Halcyon",
+      "is_blocking": 0,
+      "notes": "",
+      "created_offset_days": -2,
+      "last_touched_offset_days": -2,
+      "due_offset_days": null,
+      "events": []
+    },
+    {
+      "title": "Atlas scope sign-off from Oskar Brandt",
+      "stream": "waiting",
+      "item_type": "Delivery",
+      "priority": "Important",
+      "status": "done",
+      "effort_minutes": 5,
+      "mode": "reactive",
+      "person": "Oskar Brandt",
+      "project": "Atlas",
+      "is_blocking": 0,
+      "notes": "",
+      "created_offset_days": -30,
+      "last_touched_offset_days": -15,
+      "due_offset_days": null,
+      "events": [
+        {
+          "type": "status_changed",
+          "offset_days": -23,
+          "payload": {
+            "status": "in_progress"
+          }
+        },
+        {
+          "type": "status_changed",
+          "offset_days": -15,
+          "payload": {
+            "status": "done"
+          }
+        },
+        {
+          "type": "completed",
+          "offset_days": -15
+        }
+      ]
+    },
+    {
+      "title": "Kestrel v2 API naming review from Dev",
+      "stream": "waiting",
+      "item_type": "Technical",
+      "priority": "Normal",
+      "status": "done",
+      "effort_minutes": 5,
+      "mode": "reactive",
+      "person": "Dev",
+      "project": "Kestrel",
+      "is_blocking": 0,
+      "notes": "",
+      "created_offset_days": -12,
+      "last_touched_offset_days": -9,
+      "due_offset_days": null,
+      "events": [
+        {
+          "type": "status_changed",
+          "offset_days": -11,
+          "payload": {
+            "status": "in_progress"
+          }
+        },
+        {
+          "type": "status_changed",
+          "offset_days": -9,
+          "payload": {
+            "status": "done"
+          }
+        },
+        {
+          "type": "completed",
+          "offset_days": -9
+        }
+      ]
+    },
+    {
+      "title": "Self-review from Ines for the review cycle",
+      "stream": "waiting",
+      "item_type": "People",
+      "priority": "Normal",
+      "status": "backlog",
+      "effort_minutes": 5,
+      "mode": "reactive",
+      "person": "Ines",
+      "project": null,
+      "is_blocking": 0,
+      "notes": "",
+      "created_offset_days": -20,
+      "last_touched_offset_days": -20,
+      "due_offset_days": -6,
+      "events": []
+    }
+  ],
+  "interactions": [
+    {
+      "person": "Marta",
+      "offset_days": -3,
+      "note": "1:1"
+    },
+    {
+      "person": "Dev",
+      "offset_days": -2,
+      "note": "1:1"
+    },
+    {
+      "person": "Lena",
+      "offset_days": -6,
+      "note": "1:1"
+    },
+    {
+      "person": "Sam",
+      "offset_days": -1,
+      "note": "1:1"
+    },
+    {
+      "person": "Tomasz",
+      "offset_days": -2,
+      "note": "1:1"
+    },
+    {
+      "person": "Ines",
+      "offset_days": -22,
+      "note": "1:1"
+    },
+    {
+      "person": "Rhea Castell",
+      "offset_days": -5,
+      "note": "1:1"
+    },
+    {
+      "person": "Juno",
+      "offset_days": -1,
+      "note": "Halcyon sync"
+    },
+    {
+      "person": "Felix Amari",
+      "offset_days": -9,
+      "note": "Meridian sync"
+    },
+    {
+      "person": "Oskar Brandt",
+      "offset_days": -14,
+      "note": "Atlas kickoff"
+    }
+  ]
+}
