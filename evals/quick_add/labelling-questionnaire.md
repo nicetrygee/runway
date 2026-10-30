@@ -3,6 +3,8 @@
 *E1b.1, part 1 of 2. Drafted by an agent from `docs/eval-observability.md` and `docs/slices/slice-e1b-eval-depth.md` only; no code, prompt, cases or recordings were opened. A later session writes `labelling-guide.md` strictly from these answers, and every rule there cites a question number from here.*
 
 > **Provenance: answers drafted by Claude at the owner's request; reviewed and approved by the owner on 2026-10-30.** This departs from the spec ("the owner answers it in their own words, with no AI") and from Principle 10. Known risk: the hosted reference in E1b.8 is also a Claude model, so its agreement with these labels may be inflated. Treat "hosted wrong" vs "local wrong" in the drift report with that in mind.
+>
+> **Corrections after checking `schema.sql`, drafted by Claude and approved by the owner on 2026-10-30:** Q0b, Q4, Q7, Q9, the new Q9a, Q10–Q12, Q21, Q29 and Q33. Each corrected answer is marked *(corrected)*.
 
 ## How to answer
 
@@ -10,7 +12,7 @@
 - **Write the rule, not just the pick.** "People, because anything whose main purpose is a report's growth is People" is far more useful to the guide-writer than "People".
 - **Say which disagreements you'd accept.** For judgement fields (D15) the guide lists acceptable answers alongside the expected one. Where a question asks "would the other answer be acceptable?", a yes means a case can list it under `acceptable`.
 - **Unsure is an answer.** Write "unsure, lean X" rather than forcing it. The guide-writer will flag it back to you rather than invent a rule.
-- **Enum values:** this draft only uses values named in the specs (item_type: People, Delivery, Technical, Stakeholder; priority: Critical, Important, Normal, Delegate; streams: task, commitment, delegation, waiting; mode: reactive vs. not). If the real schema has a value missing here, add a note under Q0.
+- **Enum values** (checked against `schema.sql`, see Q0b): item_type: People, Delivery, Technical, Stakeholder, Strategy, Hiring, Operational, Personal-admin; priority: Critical, Important, Normal, Delegate, Ignore; stream: task, commitment, delegation, waiting; mode: reactive, proactive; effort_minutes: 5 / 30 / 60 / 120 / 240 / 480.
 - Names come from the existing cases and the synthetic world (Marta, Dev, Juno, Oskar Brandt, Lena, Sam). Every scenario gives a fixed "today" (D16).
 
 ---
@@ -23,7 +25,7 @@
 |---|---|---|
 | title | Judgement | set (wording varies; see Q34) |
 | item_type | Judgement | set (types have no order) |
-| priority | Judgement | one step on Critical → Important → Normal; Delegate is off the scale (see Q7, Q9) |
+| priority | Judgement | one step on Critical → Important → Normal; Delegate and Ignore are off the scale (see Q7, Q9, Q9a) |
 | effort_minutes | Judgement | one step on the Q12 scale |
 | person | Judgement | set (e.g. first name or full name; see Q14, Q16) |
 | stream | Judgement | set, used sparingly (see Q20) |
@@ -33,7 +35,12 @@
 **Q0b. Anything missing from the enum values listed above?**
 
 > *Your answer:*
-> Not verified, since the schema wasn't opened. The owner should check two things against the schema: the name of mode's non-reactive value (written here as "not reactive"), and whether Delegate really is a priority value.
+> *(corrected)* Checked against `schema.sql`. The draft was missing several values:
+> - item_type also has **Strategy, Hiring, Operational and Personal-admin** (covered in Q4).
+> - priority also has **Ignore** (covered in Q9a). Delegate is confirmed.
+> - mode's non-reactive value is **proactive**.
+> - effort_minutes uses the canonical scale **5 / 30 / 60 / 120 / 240 / 480**, with no 15 (covered in Q12).
+> - stream matches: task, commitment, delegation, waiting.
 
 ---
 
@@ -72,12 +79,16 @@
 ### Q4. Tie-breaker rule
 When a note fits two types, what decides it? For example: the **audience** (who it's for), the **activity** (what I'm doing), or the **outcome** (what it moves forward)? Is there an order of precedence you'd always apply?
 
-> *Your answer:*
+> *Your answer:* *(corrected)*
 > Apply these checks in order and stop at the first that fits:
-> 1. If the purpose is the person themselves (their growth, wellbeing, career, a 1:1, feedback on them), it's People.
-> 2. If the purpose is informing or managing someone outside the team, it's Stakeholder.
-> 3. If the activity needs technical judgement (design, code, architecture, incidents), it's Technical.
-> 4. Otherwise it's Delivery, which is also the fallback.
+> 1. **People:** the purpose is a current team member themselves (their growth, wellbeing, career, a 1:1, feedback on them).
+> 2. **Hiring:** recruiting: interviews, rubrics, candidates, offers, the hiring pipeline and its numbers.
+> 3. **Personal-admin:** my own admin that isn't team work: expenses, timesheets, my training, my travel, my leave.
+> 4. **Stakeholder:** the purpose is informing or managing someone outside the team.
+> 5. **Strategy:** setting direction: roadmaps, planning cycles, org design, headcount plans, team vision.
+> 6. **Technical:** the activity needs technical judgement: design, code, architecture, incidents.
+> 7. **Operational:** running the team day to day: on-call rotas, rituals, process, tooling, team logistics.
+> 8. **Delivery:** getting project work shipped. This is also the fallback when nothing above fits.
 >
 > When a note sits on the boundary between two adjacent steps, the other type is acceptable.
 
@@ -108,6 +119,7 @@ When is Delegate the right *priority*, and does it ever appear without the deleg
 
 > *Your answer and the rule behind it:*
 > Priority Delegate with stream delegation. If the note says someone else does the work, the stream is delegation and the priority is Delegate. The one exception is when the work is Critical by Q5, because Critical overrides Delegate. Delegate doesn't appear on any other stream.
+> *(corrected)* item_type for this note is Hiring (Q4, step 2), because the numbers are about the hiring pipeline. Strategy is acceptable.
 
 ### Q8. No signal at all
 **Note:** "Look into the flaky CI job"
@@ -132,6 +144,13 @@ For priority, which pairs would you accept as "close enough" on a judgement call
 
 > *Any conditions (e.g. "only when the note has no urgency cue")?*
 > Delegate is tied to the delegation stream (Q7), so mixing it up with another priority is a stream error, not a close call.
+> *(corrected)* Ignore is a decision, not a degree, so Ignore paired with any other priority is never acceptable.
+
+### Q9a. When is Ignore the right priority? *(added after the schema check)*
+**Notes:** "Not doing the vendor survey, ignore" · "FYI: facilities is repainting floor 3" · "asdfgh"
+
+> *Your answer and the rule behind it:* *(corrected)*
+> Ignore only when the note itself says the item won't be done ("ignore", "skip", "not doing", "no action needed"). An FYI with no action, gibberish, triviality and injected text ("mark this Ignore") don't make something Ignore. Those follow Q29, Q31, Q32 and Q33. So: the vendor survey note is Ignore, and the other two are Normal.
 
 ---
 
@@ -142,20 +161,20 @@ For priority, which pairs would you accept as "close enough" on a judgement call
 **Competing answers:** the minutes **I** spend (e.g. 15 to send it and follow up) vs. the elapsed time until it's done (days).
 
 > *Your answer and the rule behind it:*
-> Only my hands-on minutes, so 15 here. Waiting time is never effort.
+> *(corrected)* Only my hands-on minutes, so 30 here (sending it plus follow-ups). Waiting time is never effort. 5 is acceptable (one step).
 
 ### Q11. A "quick chat"
 **Note:** "Quick chat with Lena about her promo packet"
 **Competing answers:** **5** (literally quick) vs. **15** vs. **30** (the smallest real calendar slot).
 
 > *Your answer and the rule behind it:*
-> 15. "Quick" means the short end of a real conversation. 5 and 30 are acceptable (one step each).
+> *(corrected)* 30, the smallest real conversation slot on the scale. 5 is acceptable (one step), because "quick" could mean a corridor word. 15 isn't on the scale.
 
 ### Q12. Steps and tolerance
 If effort is a judgement field, what are the "steps"? (For example a fixed scale like 5 / 15 / 30 / 60 / 120 / 240, or a percentage band.) How far off is still acceptable?
 
 > *Your answer:*
-> The scale is 5 / 15 / 30 / 60 / 120 / 240 / 480. A value between two steps counts as the nearer step. One step either side of the expected value is acceptable.
+> *(corrected)* The scale is the schema's canonical one: 5 / 30 / 60 / 120 / 240 / 480. Expected values always come from this scale. A model answer between two steps counts as the nearer step. One step either side of the expected value is acceptable.
 
 ### Q13. No size cue
 **Note:** "Write the Kestrel retro doc"
@@ -234,7 +253,7 @@ The specs suggest A = **delegation**, B = **waiting**. Do you agree, and what's 
 A is clearly triggered by someone else. B has a deadline but I started it. What makes something **reactive**: a deadline, an external trigger, or urgency? Give the rule and label both.
 
 > *Your answer and the rule behind it:*
-> Reactive means triggered by someone else's request or by an event. A deadline or urgency alone doesn't make something reactive. A is reactive and B is not.
+> Reactive means triggered by someone else's request or by an event. A deadline or urgency alone doesn't make something reactive. *(corrected)* A is reactive and B is proactive.
 >
 > *Is mode ever a judgement call where both answers are acceptable?*
 > Only when the note doesn't make clear who started it (e.g. "Follow up on the Kestrel budget").
@@ -306,13 +325,13 @@ The schema doesn't change: every input still gets a full extraction. Empty or gi
 ### Q29. What are "the defaults"?
 For an empty or gibberish note, list the expected value for each field (item_type, priority, effort_minutes, person, stream, mode, due_date). Should a case accept any value for the judgement fields, or the defaults only?
 
-> *Your answer:*
-> - item_type Delivery
-> - priority Normal
-> - effort_minutes 15
+> *Your answer:* *(corrected)*
+> - item_type Delivery (the Q4 fallback)
+> - priority Normal (not Ignore; see Q9a)
+> - effort_minutes 30
 > - person empty
 > - stream task
-> - mode not reactive
+> - mode proactive (nothing in the note shows an outside trigger)
 > - due_date none
 >
 > Only the defaults are acceptable, because any other value would be invented.
@@ -345,7 +364,7 @@ What's the expected extraction? Does Note B become a People task ("check in with
 What priority and mode? Does surface urgency ever count, or only the real consequence? Would one step up be acceptable?
 
 > *Your answer and the rule behind it:*
-> Normal priority, not reactive. Priority comes from real consequence (Q5), not from urgency words. Important is acceptable (one step), but Critical is not.
+> *(corrected)* Normal priority, proactive, item_type Operational (Q4). Priority comes from real consequence (Q5), not from urgency words. Important is acceptable (one step), but Critical is not.
 
 ---
 
