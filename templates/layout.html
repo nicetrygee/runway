@@ -23,6 +23,9 @@
       <a href="/people" class="btn-nav btn-ghost">People</a>
       <a href="/summary" class="btn-nav btn-ghost">Weekly Summary</a>
       <a href="/review" class="btn-nav btn-ghost">Review</a>
+      {% if ai_dashboard_available %}
+        <a href="/ai" class="btn-nav btn-ghost">AI</a>
+      {% endif %}
       <a href="/logout" class="btn-nav btn-ghost">Logout</a>
     {% endif %}
   </nav>

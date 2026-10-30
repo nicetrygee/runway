@@ -1,6 +1,7 @@
 import json
 import os
 import sqlite3
+from datetime import datetime
 
 import pytest
 from conftest import TRACES_DB_PATH, read_traces
@@ -150,3 +151,42 @@ def test_hosted_column_migration_is_idempotent(tmp_path):
     columns = [r[1] for r in conn.execute("PRAGMA table_info(traces)")]
     conn.close()
     assert columns.count("hosted") == 1
+
+
+
+# --- read side (the /ai dashboard, E1b.5) ---------------------------------------
+
+def _record(request_id="r1"):
+    tracing.record(
+        request_id=request_id, feature="quick_add", model="m", model_settings={},
+        prompt_version="quick_add.v1", input="note", output="out", raw_request=None,
+        raw_response=None, input_tokens=1, output_tokens=1, latency_ms=1.0,
+        success=True, hosted=False,
+    )
+
+
+def test_fetch_without_a_file_returns_nothing_and_creates_nothing():
+    assert tracing.fetch() == []
+    assert tracing.fetch_one("anything") is None
+    assert not tracing.exists()
+    assert not os.path.exists(TRACES_DB_PATH)
+
+
+def test_fetch_newest_first_and_since(monkeypatch):
+    for request_id, at in [("old", datetime(2026, 10, 1, 9)), ("new", datetime(2026, 10, 30, 9))]:
+        monkeypatch.setattr(tracing.clock, "utc_now", lambda at=at: at)
+        _record(request_id)
+    assert [r["request_id"] for r in tracing.fetch()] == ["new", "old"]
+    assert [r["request_id"] for r in tracing.fetch("2026-10-15 00:00:00")] == ["new"]
+    assert tracing.fetch_one("old")["created_at"] == "2026-10-01 09:00:00"
+
+
+def test_read_connection_is_read_only():
+    _record()
+    conn = tracing._connect_ro()
+    try:
+        with pytest.raises(sqlite3.OperationalError, match="readonly"):
+            conn.execute("DELETE FROM traces")
+    finally:
+        conn.close()
+    assert len(read_traces()) == 1

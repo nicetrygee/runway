@@ -1,0 +1,39 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="ai-page">
+  <h1 class="page-title">Trace</h1>
+  <p class="page-sub"><a href="/ai" class="btn-nav btn-ghost">← AI</a></p>
+
+  <section class="review-section">
+    <dl class="ai-meta">
+      <dt>Request</dt><dd>{{ trace.request_id }}</dd>
+      <dt>Time (UTC)</dt><dd>{{ trace.created_at }}</dd>
+      <dt title="{{ otel.feature }}">Feature</dt><dd>{{ trace.feature }}</dd>
+      <dt title="{{ otel.model }}">Model</dt><dd>{{ trace.model or "—" }}</dd>
+      <dt title="{{ otel.prompt_version }}">Prompt</dt><dd>{{ trace.prompt_version or "—" }}</dd>
+      <dt title="{{ otel.hosted }}">Hosted</dt><dd>{% if trace.hosted is none %}unknown{% elif trace.hosted %}yes{% else %}no (local){% endif %}</dd>
+      <dt>Result</dt>
+      <dd>
+        {% if trace.success %}success
+        {% else %}{% if blocked %}<span class="badge badge-blocked">blocked</span> {% endif %}{{ trace.error or "failed" }}
+        {% endif %}
+      </dd>
+      <dt title="{{ otel.input_tokens }}">Input tokens</dt><dd>{{ trace.input_tokens if trace.input_tokens is not none else "—" }}</dd>
+      <dt title="{{ otel.output_tokens }}">Output tokens</dt><dd>{{ trace.output_tokens if trace.output_tokens is not none else "—" }}</dd>
+      <dt title="{{ otel.latency_ms }}">Latency</dt><dd>{% if trace.latency_ms is none %}—{% else %}{{ "%.0f" | format(trace.latency_ms) }} ms{% endif %}</dd>
+      <dt>Tokens/s</dt><dd>{% if trace.tokens_per_second is none %}—{% else %}{{ "%.1f" | format(trace.tokens_per_second) }}{% endif %}</dd>
+    </dl>
+  </section>
+
+  {% for name, label in [("input", "Input"), ("output", "Output"), ("model_settings", "Model settings"), ("raw_request", "Raw request"), ("raw_response", "Raw response")] %}
+    <section class="review-section">
+      <h2>{{ label }}</h2>
+      {% if pretty[name] is none %}
+        <p class="empty-sm">None recorded.</p>
+      {% else %}
+        <pre class="trace-json">{{ pretty[name] }}</pre>
+      {% endif %}
+    </section>
+  {% endfor %}
+</div>
+{% endblock %}

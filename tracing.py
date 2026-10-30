@@ -6,11 +6,15 @@ TRACES_DB_PATH (read per call, so tests can point it at a temp file).
 
 Tracing must never break a user request: any failure here is logged and
 swallowed.
+
+The /ai dashboard reads through fetch() / fetch_one(), which open the file
+read-only and never create it or touch its schema.
 """
 import json
 import logging
 import os
 import sqlite3
+from pathlib import Path
 from typing import Any
 
 import clock
@@ -58,6 +62,51 @@ def _ensure_schema(conn: sqlite3.Connection) -> None:
 
 def traces_db_path() -> str:
     return os.environ.get("TRACES_DB_PATH", DEFAULT_TRACES_DB_PATH)
+
+
+def exists() -> bool:
+    return os.path.exists(traces_db_path())
+
+
+def _connect_ro() -> sqlite3.Connection:
+    """Open traces.db read-only (the dashboard never writes it). Callers check
+    exists() first: mode=ro won't create the file, it errors instead."""
+    uri = Path(traces_db_path()).resolve().as_uri() + "?mode=ro"
+    conn = sqlite3.connect(uri, uri=True)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+
+def _query(sql: str, params: tuple[Any, ...]) -> list[dict[str, Any]]:
+    """Read rows for the dashboard. No file or no table yet means no rows."""
+    if not exists():
+        return []
+    conn = _connect_ro()
+    try:
+        return [dict(row) for row in conn.execute(sql, params)]
+    except sqlite3.OperationalError as e:
+        if "no such table" in str(e):
+            return []
+        raise
+    finally:
+        conn.close()
+
+
+def fetch(since: str | None = None) -> list[dict[str, Any]]:
+    """Trace rows created at or after `since` ('YYYY-MM-DD HH:MM:SS'; None
+    for all), newest first."""
+    if since is None:
+        return _query("SELECT * FROM traces ORDER BY created_at DESC, id DESC", ())
+    return _query(
+        "SELECT * FROM traces WHERE created_at >= ? ORDER BY created_at DESC, id DESC",
+        (since,),
+    )
+
+
+def fetch_one(request_id: str) -> dict[str, Any] | None:
+    rows = _query("SELECT * FROM traces WHERE request_id = ? ORDER BY id DESC LIMIT 1",
+                  (request_id,))
+    return rows[0] if rows else None
 
 
 def tokens_per_second(output_tokens: int | None, latency_ms: float | None) -> float | None:
