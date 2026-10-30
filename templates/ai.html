@@ -1,0 +1,152 @@
+{% extends "layout.html" %}
+{% macro secs(ms) %}{% if ms is none %}—{% else %}{{ "%.1f" | format(ms / 1000) }}s{% endif %}{% endmacro %}
+{% macro num(value, fmt="%.0f") %}{% if value is none %}—{% else %}{{ fmt | format(value) }}{% endif %}{% endmacro %}
+{% macro pct(value) %}{% if value is none %}—{% else %}{{ "%.0f" | format(value * 100) }}%{% endif %}{% endmacro %}
+{% macro budget(mean, cap, pct_used, peak) %}
+  {%- if mean is none -%}—
+  {%- else -%}
+    <span class="{{ 'over-budget' if pct_used and pct_used > 100 }}">{{ "%.0f" | format(mean) }}{% if cap %} / {{ cap }}{% endif %}</span>
+    <span class="sub">{% if cap %}{{ "%.0f" | format(pct_used) }}% · {% endif %}max {{ peak }}</span>
+  {%- endif -%}
+{% endmacro %}
+{% block content %}
+<div class="ai-page">
+  <h1 class="page-title">AI</h1>
+  <p class="page-sub">What the AI features did: calls, speed, tokens against budget, failures, and the latest eval runs. Read-only.</p>
+
+  <div class="ai-windows" role="navigation" aria-label="Time window">
+    {% for w in windows %}
+      <a href="/ai?window={{ w }}" class="btn-nav {{ '' if w == window else 'btn-ghost' }}">{{ w }}</a>
+    {% endfor %}
+  </div>
+
+  <section class="review-section">
+    <h2>Calls</h2>
+    {% if not has_traces %}
+      <p class="empty-sm">No traces.db yet. Every AI call is traced there once one runs.</p>
+    {% elif not groups %}
+      <p class="empty-sm">No AI calls in this window.</p>
+    {% else %}
+      <div class="ai-table-wrap">
+        <table class="ai-table">
+          <thead>
+            <tr>
+              <th class="left" title="{{ otel.feature }}">Feature<span class="sub" title="{{ otel.prompt_version }}">prompt</span></th>
+              <th class="left" title="{{ otel.model }}">Model</th>
+              <th>Calls</th>
+              <th>Success</th>
+              <th title="{{ otel.error }} = HostedCallBlocked">Blocked</th>
+              <th title="{{ otel.hosted }}">Local / hosted</th>
+              <th title="{{ otel.latency_ms }}">p50</th>
+              <th title="{{ otel.latency_ms }}">p95</th>
+              <th title="gen_ai.usage.output_tokens / duration">Tokens/s</th>
+              <th title="{{ otel.input_tokens }}">In / call<span class="sub">vs budget</span></th>
+              <th title="{{ otel.output_tokens }}">Out / call<span class="sub">vs budget</span></th>
+              <th title="{{ otel.input_tokens }} / {{ otel.output_tokens }}">Total tokens<span class="sub">in / out</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for g in groups %}
+              <tr>
+                <td class="left">{{ g.feature }}<span class="sub">{{ g.prompt_version or "—" }}</span></td>
+                <td class="left">{{ g.model or "—" }}</td>
+                <td>{{ g.calls }}</td>
+                <td>{{ pct(g.success_rate) }}</td>
+                <td>{{ g.blocked }}</td>
+                <td>{{ g.local }} / {{ g.hosted }}{% if g.hosted_unknown %}<span class="sub">{{ g.hosted_unknown }} unknown</span>{% endif %}</td>
+                <td>{{ secs(g.p50_latency_ms) }}</td>
+                <td>{{ secs(g.p95_latency_ms) }}</td>
+                <td>{{ num(g.tokens_per_s, "%.1f") }}</td>
+                <td>{{ budget(g.mean_input_tokens, g.budget_input, g.input_budget_pct, g.max_input_tokens) }}</td>
+                <td>{{ budget(g.mean_output_tokens, g.budget_output, g.output_budget_pct, g.max_output_tokens) }}</td>
+                <td>{{ g.input_tokens }} / {{ g.output_tokens }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% endif %}
+  </section>
+
+  <section class="review-section">
+    <h2>Recent failures</h2>
+    {% if not failures %}
+      <p class="empty-sm">None in this window.</p>
+    {% else %}
+      <div class="ai-table-wrap">
+        <table class="ai-table">
+          <thead>
+            <tr>
+              <th class="left">Time (UTC)</th>
+              <th class="left" title="{{ otel.feature }}">Feature</th>
+              <th class="left" title="{{ otel.model }}">Model</th>
+              <th class="left" title="{{ otel.error }}">Error</th>
+              <th class="left">Trace</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for f in failures %}
+              <tr>
+                <td class="left">{{ f.created_at }}</td>
+                <td class="left">{{ f.feature }}</td>
+                <td class="left">{{ f.model or "—" }}</td>
+                <td class="left wrap">{% if f.blocked %}<span class="badge badge-blocked">blocked</span> {% endif %}{{ f.error or "—" }}</td>
+                <td class="left"><a href="/ai/trace/{{ f.request_id }}">open</a></td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% endif %}
+  </section>
+
+  <section class="review-section">
+    <h2>Latest eval runs</h2>
+    {% if not evals.columns %}
+      <p class="empty-sm">No eval reports yet. Run <code>python -m evals quick_add --live --repeat 3</code>.</p>
+    {% else %}
+      <p class="empty-sm">Quick Add, one column per model: each model's latest live run (its latest replay if it has none). Cells are mean · worst run · flip rate.</p>
+      <div class="ai-table-wrap">
+        <table class="ai-table">
+          <thead>
+            <tr>
+              <th class="left">Field</th>
+              {% for c in evals.columns %}
+                <th>{{ c.model }}<span class="sub">{{ c.mode }} · {{ c.repeat }}× · {{ c.n_cases }} cases · {{ c.prompt_version }}</span><span class="sub">{{ c.run_at }}</span></th>
+              {% endfor %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for name in evals.fields %}
+              <tr>
+                <td class="left">{{ name }}</td>
+                {% for c in evals.columns %}
+                  {% set s = c.fields.get(name) %}
+                  <td>{% if s %}{{ pct(s.mean) }} · {{ pct(s.worst) }} · {{ pct(s.flip_rate) }}{% else %}—{% endif %}</td>
+                {% endfor %}
+              </tr>
+            {% endfor %}
+            <tr class="group-row"><td colspan="{{ evals.columns | length + 1 }}">Efficiency (per suite run, mean over repeats)</td></tr>
+            <tr>
+              <td class="left" title="{{ otel.latency_ms }}">p50 latency</td>
+              {% for c in evals.columns %}<td>{{ secs(c.p50_latency_ms) }}</td>{% endfor %}
+            </tr>
+            <tr>
+              <td class="left" title="{{ otel.latency_ms }}">p95 latency</td>
+              {% for c in evals.columns %}<td>{{ secs(c.p95_latency_ms) }}</td>{% endfor %}
+            </tr>
+            <tr>
+              <td class="left">Tokens/s</td>
+              {% for c in evals.columns %}<td>{{ num(c.tokens_per_s, "%.1f") }}</td>{% endfor %}
+            </tr>
+            <tr>
+              <td class="left" title="{{ otel.input_tokens }} + {{ otel.output_tokens }}">Tokens per suite</td>
+              {% for c in evals.columns %}<td>{{ num(c.tokens_per_suite) }}</td>{% endfor %}
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}

@@ -41,7 +41,7 @@ exclude = ["^venv/", "^flask_session/"]
 # AGENTS.md AI rule 9: the AI modules are fully typed. The rest of the repo
 # stays on the default (lenient) settings.
 [[tool.mypy.overrides]]
-module = ["llm", "tracing", "prompts", "classify", "evals.*"]
+module = ["llm", "tracing", "prompts", "classify", "observability", "evals.*"]
 disallow_untyped_defs = true
 disallow_incomplete_defs = true
 warn_return_any = true

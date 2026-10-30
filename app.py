@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 from datetime import datetime
@@ -16,7 +17,9 @@ from werkzeug.security import check_password_hash, generate_password_hash
 import capacity
 import clock
 import db as db_module
+import observability
 import recommend
+import tracing
 from classify import extract_task_from_text, generate_weekly_summary
 from db import db  # noqa: F401 -- re-export: tests import the handle as `from app import db`
 from events import events_between
@@ -586,6 +589,85 @@ def review():
         meeting_hours=meeting_hours,
         ai_narrative=ai_narrative,
     )
+
+# AI dashboard (E1b.5, D29). Shows traces, not AI output, so it isn't behind
+# a feature flag. Aggregation lives in observability.py (pure); traces.db is
+# opened read-only by tracing.fetch and never written from here.
+DEFAULT_EVAL_REPORTS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                        "evals", "reports")
+EVAL_REPORTS_LIMIT = 20  # newest JSON reports read per page view
+TRACE_JSON_FIELDS = ("input", "output", "model_settings", "raw_request", "raw_response")
+
+
+def eval_reports_dir():
+    """Read per call, like TRACES_DB_PATH, so a worktree (or a test) can point
+    at another checkout's gitignored reports."""
+    return os.environ.get("EVAL_REPORTS_DIR", DEFAULT_EVAL_REPORTS_DIR)
+
+
+def latest_eval_reports(limit=EVAL_REPORTS_LIMIT):
+    """The newest JSON eval reports, newest first (names start with a UTC
+    stamp, so name order is time order). Unreadable files are skipped."""
+    reports_dir = eval_reports_dir()
+    if not os.path.isdir(reports_dir):
+        return []
+    names = sorted((n for n in os.listdir(reports_dir) if n.endswith(".json")), reverse=True)
+    reports = []
+    for name in names[:limit]:
+        try:
+            with open(os.path.join(reports_dir, name), encoding="utf-8") as f:
+                reports.append(json.load(f))
+        except (OSError, ValueError):
+            app.logger.warning("Skipping unreadable eval report %s", name)
+    return reports
+
+
+def pretty_json(value):
+    """Pretty-print a stored JSON column; plain text (e.g. raw model output) as-is."""
+    if value is None:
+        return None
+    try:
+        return json.dumps(json.loads(value), indent=2, ensure_ascii=False)
+    except (TypeError, ValueError):
+        return value
+
+
+@app.context_processor
+def inject_ai_nav():
+    # The "AI" nav link only appears once there's a traces.db to show (D29).
+    return {"ai_dashboard_available": tracing.exists()}
+
+
+@app.route("/ai")
+@login_required
+def ai_dashboard():
+    window = request.args.get("window", observability.DEFAULT_WINDOW)
+    if window not in observability.WINDOWS:
+        window = observability.DEFAULT_WINDOW
+    rows = tracing.fetch(observability.window_start(clock.utc_now(), window))
+    return render_template(
+        "ai.html",
+        window=window,
+        windows=observability.WINDOWS,
+        groups=observability.group_metrics(rows),
+        failures=observability.recent_failures(rows),
+        evals=observability.eval_comparison(latest_eval_reports()),
+        otel=observability.OTEL_NAMES,
+        has_traces=tracing.exists(),
+    )
+
+
+@app.route("/ai/trace/<request_id>")
+@login_required
+def ai_trace(request_id):
+    trace = tracing.fetch_one(request_id)
+    if trace is None:
+        flash("Trace not found.", "error")
+        return redirect("/ai")
+    pretty = {name: pretty_json(trace.get(name)) for name in TRACE_JSON_FIELDS}
+    return render_template("ai_trace.html", trace=trace, pretty=pretty,
+                           blocked=observability.is_blocked(trace),
+                           otel=observability.OTEL_NAMES)
 
 # Edit Task
 @app.route("/edit/<int:task_id>", methods=["GET", "POST"])

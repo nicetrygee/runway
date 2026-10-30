@@ -55,7 +55,7 @@ Everything after Phase 2 is optional.
 | D26 | Full Quick Add case set: about 40 (about 25 normal/edge, 8 failure, 7 adversarial); the first 10 re-checked against the guide | Decided |
 | D27 | Failure = not a clean task (empty, gibberish, two tasks, a question, context only); adversarial = injection or misleading cues. Same schema; empty or gibberish input is scored as best-effort extraction, no schema change | Decided |
 | D28 | A fixed synthetic world (about 15 people, 3–4 projects, about 60 items) seeded into a separate `lab.db`; the seeder refuses `runway.db` or any non-empty DB | Decided |
-| D29 | Dashboard at `/ai`, behind login, reading `traces.db` read-only. Context budget for Quick Add: 1k in / 256 out (measured: 370 / 100) | Decided |
+| D29 | Dashboard at `/ai`, behind login, reading `traces.db` read-only. Context budget for Quick Add: 1k in / 256 out (measured: 370 / 100); weekly summary: 2k in / 256 out (measured in E1b.5 on qwen3-8b: 217 / 107 for an 11-item week, 919 / 124 for a 60-item week) | Decided |
 | D30 | `/no_think` stays in the Quick Add template; adapters strip the leading line for non-Qwen models, and `raw_request` shows what was sent. A clean v2 waits for Phase 2 | Decided |
 
 ## Architecture
