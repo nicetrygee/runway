@@ -136,5 +136,6 @@ def test_done_items_have_a_completed_event(world):
 def test_every_person_in_the_quick_add_cases_is_in_the_cast(cast):
     lines = CASES_PATH.read_text(encoding="utf-8").splitlines()
     people = {json.loads(line)["expected"]["person"] for line in lines if line.strip()}
-    missing = {person for person in people if person} - cast
+    # A team counterpart ("infra team") isn't a cast member (guide rule PE2).
+    missing = {person for person in people if person and not person.endswith(" team")} - cast
     assert not missing, f"cases name people who aren't in world.json: {sorted(missing)}"
