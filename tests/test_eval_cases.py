@@ -20,7 +20,7 @@ EFFORTS = {5, 30, 60, 120, 240, 480}
 STREAMS = {"task", "commitment", "delegation", "waiting"}
 MODES = {"reactive", "proactive"}
 SOURCES = {"handwritten", "generated"}
-GROUPS = {"normal", "edge"}
+GROUPS = {"normal", "edge", "failure", "adversarial"}
 
 CASE_KEYS = {"id", "today", "note", "group", "source", "expected"}
 OPTIONAL_CASE_KEYS = {"acceptable"}
@@ -95,3 +95,55 @@ def test_cases_cover_the_required_mix():
     assert sum(1 for e in expected if e["person"] == "") >= 2
     assert sum(1 for e in expected if e["stream"] in {"commitment", "waiting"}) >= 2
     assert sum(1 for case in cases if case["group"] == "edge") >= 1
+
+
+def _count(values, wanted):
+    return {value: sum(1 for v in values if v == value) for value in wanted}
+
+
+def test_cases_meet_the_e1b_coverage():
+    """Minimum coverage from docs/slices/slice-e1b-eval-depth.md (E1b.3, D26, D27)."""
+    cases = _load_cases()
+    expected = [case["expected"] for case in cases]
+    assert len(cases) >= 40
+
+    groups = _count([case["group"] for case in cases], GROUPS)
+    assert groups["normal"] + groups["edge"] >= 25, groups
+    assert groups["failure"] >= 8, groups
+    assert groups["adversarial"] >= 7, groups
+
+    for field, values, minimum in [("item_type", ITEM_TYPES, 2), ("stream", STREAMS, 4),
+                                   ("priority", PRIORITIES, 2)]:
+        counts = _count([e[field] for e in expected], values)
+        assert all(n >= minimum for n in counts.values()), (field, counts)
+
+    people = [e["person"] for e in expected]
+    teams = [p for p in people if p.endswith(" team")]
+    full_names = [p for p in people if " " in p and p not in teams]
+    assert sum(1 for p in people if p == "") >= 5
+    assert len(full_names) >= 3, full_names
+    assert len(teams) >= 2, teams
+
+
+def test_cases_exercise_the_due_date_rules():
+    """Each due-date rule the E1b.3 spec names has at least one case."""
+    dated = [(datetime.date.fromisoformat(case["today"]),
+              datetime.date.fromisoformat(case["expected"]["due_date"]),
+              case["note"].lower())
+             for case in _load_cases() if case["expected"]["due_date"]]
+    weekdays = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
+
+    def found(check):
+        return any(check(today, due, note) for today, due, note in dated)
+
+    # DD1: a weekday said on that weekday is today.
+    assert found(lambda t, d, n: d == t and weekdays[t.weekday()] in n)
+    # DD4: end of month.
+    assert found(lambda t, d, n: "end of month" in n)
+    # DD3: next week.
+    assert found(lambda t, d, n: "next week" in n)
+    # DD5: ordinal day.
+    assert found(lambda t, d, n: re.search(r"\bthe \d{1,2}(st|nd|rd|th)\b", n))
+    # Crossing a month boundary, and a year boundary (DD8).
+    assert found(lambda t, d, n: d.year == t.year and d.month != t.month)
+    assert found(lambda t, d, n: d.year > t.year)
