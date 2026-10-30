@@ -30,12 +30,12 @@ Everything after Phase 2 is optional.
 | # | Decision | Status |
 |---|---|---|
 | D1 | Small capped Anthropic budget for drift runs: prepaid credit, auto-reload off, own workspace and key | Decided |
-| D2 | Final local model, quantisation and context length. Phase 0 uses Qwen3-8B (4-bit) provisionally, with thinking off via `/no_think` in the system prompt | Open (Phase 1b) |
+| D2 | Final local model, quantisation and context length. Phase 0 uses Qwen3-8B (4-bit) provisionally, with thinking off via `/no_think` in the system prompt. Chosen in E1b.6 from 3 candidates (Qwen3-8B Q4, Qwen3-4B, one other family at 7–9B): peak memory must leave room for Runway and a browser, then accuracy, then p50 latency | Decided (method); model in E1b.6 |
 | D3 | Judge model: a different family from the one being judged, run as a separate pass | Open |
-| D4 | Repeat runs per case: start at 3 | Open |
-| D5 | Release-gate thresholds per scoring dimension | Open |
+| D4 | 3 repeat runs per case at temperature 0. If runs always agree, drop to 1 for day-to-day live runs | Decided |
+| D5 | Per-field floors about 5 points below the chosen model's **worst** of 3 runs. Written down as targets in E1b.6; enforced only by the Phase 5 release gate | Decided (method); numbers in E1b.6 |
 | D6 | All lab data is synthetic. `runway.db` confirmed to hold no real data | Decided |
-| D7 | Budget cap amount, sized from measured tokens per suite run | Open |
+| D7 | Cap = 10 suite runs × 3 repeats on the hosted model at measured tokens, rounded up, **with a $10 floor** (estimated ~$3). Auto-reload off | Decided (method); amount in E1b.6 |
 | D8 | Real-environment split deferred. Cheap guard now; full split before the first real note | Decided |
 | D9 | Eval runner is its own command (live / replay / report). Pytest only for unit tests | Decided |
 | D10 | Runway's slice-spec approach, not Spec Kit | Decided |
@@ -51,6 +51,12 @@ Everything after Phase 2 is optional.
 | D22 | Hosted = any adapter whose endpoint isn't loopback; hosted calls need `RUNWAY_LAB=1`, checked before sending, and blocked calls are traced | Decided |
 | D23 | Prompt version bumps are enforced by `prompts.lock.json` (hash of template + output schema per version) and a test | Decided |
 | D24 | CI replay fails only on missing recordings or a crash, never on scores (until D5) | Decided |
+| D25 | Hosted reference model: `claude-sonnet-5-5`, pinned by exact ID. Thinking off is sent as `{type: "between_tools"}` at default effort; `temperature` is never sent | Decided |
+| D26 | Full Quick Add case set: about 40 (about 25 normal/edge, 8 failure, 7 adversarial); the first 10 re-checked against the guide | Decided |
+| D27 | Failure = not a clean task (empty, gibberish, two tasks, a question, context only); adversarial = injection or misleading cues. Same schema; empty or gibberish input is scored as best-effort extraction, no schema change | Decided |
+| D28 | A fixed synthetic world (about 15 people, 3–4 projects, about 60 items) seeded into a separate `lab.db`; the seeder refuses `runway.db` or any non-empty DB | Decided |
+| D29 | Dashboard at `/ai`, behind login, reading `traces.db` read-only. Context budget for Quick Add: 1k in / 256 out (measured: 370 / 100) | Decided |
+| D30 | `/no_think` stays in the Quick Add template; adapters strip the leading line for non-Qwen models, and `raw_request` shows what was sent. A clean v2 waits for Phase 2 | Decided |
 
 ## Architecture
 
@@ -84,7 +90,7 @@ Every phase ends in a tagged release (`eval-phase-N`), an explain-back note writ
 |---|---|
 | **0 Skeleton** | Minimal interface and LM Studio adapter; traces file; about 10 synthetic Quick Add cases; per-field scoring; live and replay commands. See `slice-e0-skeleton.md` |
 | **1a Guard and rules** | Hosted guard and AGENTS.md rules; prompt versioning; linting and types; CI replay; weekly summary through the interface and traced. See `slice-e1a-guard-rules.md` |
-| **1b Eval depth** | Labelling-guide questionnaire and guide; full eval set (normal, failure, adversarial); synthetic world; repeat-run baseline; dashboard v1 with efficiency metrics; final model choice; Anthropic adapter and first drift report. Draft spec, not yet grilled: `slice-e1b-eval-depth.md` |
+| **1b Eval depth** | Labelling-guide questionnaire and guide; full eval set (normal, failure, adversarial); synthetic world; repeat-run baseline; dashboard v1 with efficiency metrics; final model choice; Anthropic adapter and first drift report. See `slice-e1b-eval-depth.md` |
 | **2 "What next?"** | Read-only tool-using agent; `recommend.py` stays pure and is called as a tool; the engine's ranking is the correct answer; step tracing and a step cap; failure investigation view |
 | **3 "Process my notes"** | Propose-then-approve writes; limited tools; idempotency; injection set; approve, edit and reject decisions as a production signal |
 | **4 "Ask Runway"** | Multi-turn sessions; grounding through cited item IDs; "I don't know" cases; local judge with calibration (the "EM-memory Q&A" from `technical-design.md`) |
